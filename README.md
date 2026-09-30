@@ -6,7 +6,7 @@ We systematically evaluate self-supervised learning (SSL) architectures and stat
 
 ---
 
-## 🔬 Evaluated Architectures
+## Evaluated Architectures
 
 1. **Corponi et al. (Baseline SSL)**: ResNet convolutional backbone pre-trained via self-supervised masked autoencoding and fine-tuned for binary classification.
 2. **BIOT (Biosignal Transformer)**: Patch-based Transformer tokenizing multi-channel physiological time-series with sinusoidal positional encodings.
@@ -15,7 +15,7 @@ We systematically evaluate self-supervised learning (SSL) architectures and stat
 
 ---
 
-## 📁 Datasets & Experimental Protocols
+## Datasets & Experimental Protocols
 
 ### 1. Pre-Training Corpus (11 Datasets, >6,000 Hours)
 Pre-training is performed over the full 11-dataset multi-source corpus:
@@ -34,7 +34,7 @@ All downstream evaluations strictly follow **Leave-One-Subject-Out Cross-Validat
 
 ---
 
-## 📊 Benchmark Results (Official LOSOCV & Statistical Significance)
+## Benchmark Results (Official LOSOCV & Statistical Significance)
 
 ### 1. Mean Metrics with 95% Confidence Intervals (Student's $t$)
 
@@ -70,7 +70,7 @@ All downstream evaluations strictly follow **Leave-One-Subject-Out Cross-Validat
 
 ---
 
-## 🧪 Ablation Studies
+## Ablation Studies
 
 Summary results are recorded in [`risultati_ablation/ablation_summary.json`](risultati_ablation/ablation_summary.json).
 
@@ -85,7 +85,7 @@ We systematically remove each dataset from the pre-training pool to assess in-do
 
 ---
 
-## 🚀 Reproduction Pipeline
+## Reproduction Pipeline
 
 ```bash
 # 1. Compute statistical significance tables and 95% Confidence Intervals
@@ -103,7 +103,7 @@ python scripts/audit_server_status.py
 
 ---
 
-## 📂 Repository Structure
+## Repository Structure
 
 ```text
 ├── compute_statistics.py        # Paired Wilcoxon & Student's t 95% CI evaluator

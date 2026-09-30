@@ -1,8 +1,10 @@
 import argparse
 import json
+import os
 import pickle
 import shutil
 import typing as t
+import numpy as np
 from time import time
 
 import torch
@@ -322,8 +324,12 @@ def main(args, wandb_sweep: bool = False):
         utils.wandb_init(args, wandb_sweep=wandb_sweep)
 
     utils.get_device(args)
+    cli_dataset = getattr(args, "dataset", None)
     if args.task_mode in (1, 2):
         utils.load_args(args, dir=args.path2pretraining_res)
+        # Se il dataset è stato fornito da CLI, ha la precedenza sui metadati del pre-training
+        if cli_dataset is not None:
+            args.dataset = cli_dataset
     summary = tensorboard.Summary(args)
 
     train_ds, val_ds, test_ds = get_datasets(args, summary=summary)
@@ -543,7 +549,6 @@ def main(args, wandb_sweep: bool = False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-
     # training configuration
     parser.add_argument(
         "--e4selflearning",
@@ -575,6 +580,7 @@ if __name__ == "__main__":
         "with feature_encoder) information that makes it easier for the critic "
         "model to tell subjects apart",
     )
+    parser.add_argument("--dataset", type=str, required=True)
     parser.add_argument("--output_dir", type=str, required=True)
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--epochs", type=int, default=20)
@@ -677,14 +683,9 @@ if __name__ == "__main__":
                 default=0.0,
                 help="dropout rate of stochastic depth",
             )
-    else:
-        # dataset configuration
-        parser.add_argument(
-            "--dataset",
-            type=str,
-            required=True,
-            help="path to directory where preprocessed data are stored",
-        )
+
+    if temp_args.task_mode not in (1, 2):
+        # Additional dataset/model configuration for mode 3 (end-to-end)
         parser.add_argument(
             "--scaling_mode",
             type=int,
@@ -746,17 +747,17 @@ if __name__ == "__main__":
             help="disable bias term in Transformer",
         )
 
-        parser.add_argument(
-            "--split_mode",
-            type=int,
-            default=0,
-            choices=[0, 1],
-            help="criterion for train/val/test split:"
-            "0) time-split: each session is split into 70:15:15 along the temporal "
-            "dimension such that segments from different splits map to "
-            "different parts of the recording"
-            "1) subject-split: cases and controls are split into 70:15:15 "
-            "train/val/test such that subjects are not shared across splits",
-        )
+    parser.add_argument(
+        "--split_mode",
+        type=int,
+        default=0,
+        choices=[0, 1],
+        help="criterion for train/val/test split:"
+        "0) time-split: each session is split into 70:15:15 along the temporal "
+        "dimension such that segments from different splits map to "
+        "different parts of the recording"
+        "1) subject-split: cases and controls are split into 70:15:15 "
+        "train/val/test such that subjects are not shared across splits",
+    )
     del temp_args
     main(parser.parse_args())

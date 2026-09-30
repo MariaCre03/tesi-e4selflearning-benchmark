@@ -1,0 +1,122 @@
+[
+  {
+    "fold": 1,
+    "subject": "G",
+    "samples": 85,
+    "accuracy": 51.76,
+    "f1_stress": 48.1,
+    "macro_f1": 51.52,
+    "precision": 67.86,
+    "recall": 37.25
+  },
+  {
+    "fold": 2,
+    "subject": "H",
+    "samples": 85,
+    "accuracy": 38.82,
+    "f1_stress": 21.21,
+    "macro_f1": 35.61,
+    "precision": 46.67,
+    "recall": 13.73
+  },
+  {
+    "fold": 3,
+    "subject": "I",
+    "samples": 85,
+    "accuracy": 27.06,
+    "f1_stress": 22.5,
+    "macro_f1": 26.81,
+    "precision": 31.03,
+    "recall": 17.65
+  },
+  {
+    "fold": 4,
+    "subject": "J",
+    "samples": 85,
+    "accuracy": 49.41,
+    "f1_stress": 52.75,
+    "macro_f1": 49.16,
+    "precision": 60.0,
+    "recall": 47.06
+  },
+  {
+    "fold": 5,
+    "subject": "K",
+    "samples": 85,
+    "accuracy": 49.41,
+    "f1_stress": 55.67,
+    "macro_f1": 48.38,
+    "precision": 58.7,
+    "recall": 52.94
+  },
+  {
+    "fold": 6,
+    "subject": "L",
+    "samples": 85,
+    "accuracy": 58.82,
+    "f1_stress": 63.16,
+    "macro_f1": 58.25,
+    "precision": 68.18,
+    "recall": 58.82
+  },
+  {
+    "fold": 7,
+    "subject": "M",
+    "samples": 85,
+    "accuracy": 44.71,
+    "f1_stress": 35.62,
+    "macro_f1": 43.58,
+    "precision": 59.09,
+    "recall": 25.49
+  },
+  {
+    "fold": 8,
+    "subject": "O",
+    "samples": 85,
+    "accuracy": 36.47,
+    "f1_stress": 46.0,
+    "macro_f1": 34.43,
+    "precision": 46.94,
+    "recall": 45.1
+  },
+  {
+    "fold": 9,
+    "subject": "P",
+    "samples": 85,
+    "accuracy": 52.94,
+    "f1_stress": 61.54,
+    "macro_f1": 50.47,
+    "precision": 60.38,
+    "recall": 62.75
+  },
+  {
+    "fold": 10,
+    "subject": "Q",
+    "samples": 85,
+    "accuracy": 60.0,
+    "f1_stress": 61.36,
+    "macro_f1": 59.95,
+    "precision": 72.97,
+    "recall": 52.94
+  },
+  {
+    "fold": 11,
+    "subject": "S",
+    "samples": 85,
+    "accuracy": 62.35,
+    "f1_stress": 75.38,
+    "macro_f1": 47.69,
+    "precision": 62.03,
+    "recall": 96.08
+  },
+  {
+    "fold": 12,
+    "subject": "T",
+    "samples": 68,
+    "accuracy": 51.47,
+    "f1_stress": 65.98,
+    "macro_f1": 40.68,
+    "precision": 69.57,
+    "recall": 62.75
+  }
+]

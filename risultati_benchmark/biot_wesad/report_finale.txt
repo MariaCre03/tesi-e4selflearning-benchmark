@@ -1,0 +1,19 @@
+======================================================================
+       REPORT FINALE LOSOCV: BIOT_WESAD_LOSOCV
+======================================================================
+ Modello: BIOT | Dataset: WESAD (15 Soggetti)
+ Pretrained Weights: biot_encoder_pretrained.pt
+----------------------------------------------------------------------
+ Accuratezza Media (Fold) :  77.09% +- 12.40%
+ F1-Stress Medio (Fold)   :  52.20% +- 27.74%
+ Macro-F1 Medio (Fold)    :  68.00% +- 16.61%
+ Richiamo Medio (Fold)    :  63.00% +- 32.03%
+ Precisione Media (Fold)  :  48.83% +- 29.82%
+----------------------------------------------------------------------
+ POOLED (Globale su tutti i 317 campioni):
+  Acc: 76.34% | F1-Stress: 53.99% | Macro-F1: 69.03%
+----------------------------------------------------------------------
+ MATRICE DI CONFUSIONE POOLED:
+[[198  49]
+ [ 26  44]]
+======================================================================

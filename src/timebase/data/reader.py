@@ -43,23 +43,27 @@ def compute_statistics(
     if args.task_mode == 0:
         # --filter_collections and --unlabelled_data_resampling_percentage
         # are used for ablation analyses
-        if args.filter_collections and args.unlabelled_data_resampling_percentage < 1:
+        filter_collections = getattr(args, "filter_collections", None)
+        unlabelled_data_resampling_percentage = getattr(
+            args, "unlabelled_data_resampling_percentage", 1.0
+        )
+        if filter_collections and unlabelled_data_resampling_percentage < 1:
             raise ValueError(
                 "--unlabelled_data_resampling_percentage and --filter_collections illegal "
                 "combination. Filter collections only when "
                 "--unlabelled_data_resampling_percentage 1 and downsize pre-training set only "
                 "when --filter_collections None"
             )
-        if args.filter_collections:
+        if filter_collections:
             assert (
-                args.exclude_anomalies == False
+                getattr(args, "exclude_anomalies", False) == False
             ), "--exclude_anomalies should be False when using --filter_collections"
-            selected_collections = "_".join(args.filter_collections)
+            selected_collections = "_".join(filter_collections)
             cache = os.path.join(
                 args.dataset,
                 f"stats_{selected_collections}_split_mode_{args.split_mode}_ssl",
             )
-            if args.reuse_stats and cache in stats_dict:
+            if getattr(args, "reuse_stats", True) and cache in stats_dict:
                 pass
             else:
                 stats = {
@@ -79,7 +83,7 @@ def compute_statistics(
                 collection_files = {
                     entry: i
                     for i, entry in enumerate(data["x_pre_train"])
-                    if any(substring in entry for substring in args.filter_collections)
+                    if any(substring in entry for substring in filter_collections)
                     # target task train is always kept in pre-training
                     or entry in data["x_train"]
                 }
@@ -97,17 +101,17 @@ def compute_statistics(
                 stats_dict[cache] = stats
                 with open(stats_filename, "wb") as file:
                     pickle.dump(stats_dict, file)
-        elif args.unlabelled_data_resampling_percentage < 1:
-            assert args.exclude_anomalies == False, (
+        elif unlabelled_data_resampling_percentage < 1:
+            assert getattr(args, "exclude_anomalies", False) == False, (
                 "--exclude_anomalies should be False when using "
                 "--unlabelled_data_resampling_percentage"
             )
             cache = os.path.join(
                 args.dataset,
-                f"stats_size_{args.unlabelled_data_resampling_percentage}_split_mode"
+                f"stats_size_{unlabelled_data_resampling_percentage}_split_mode"
                 f"_{args.split_mode}_ssl",
             )
-            if args.reuse_stats and cache in stats_dict:
+            if getattr(args, "reuse_stats", True) and cache in stats_dict:
                 pass
             else:
                 stats = {
@@ -137,7 +141,7 @@ def compute_statistics(
                     )
                 )
                 # only target task train set is used for pre-training
-                if args.unlabelled_data_resampling_percentage == 0:
+                if unlabelled_data_resampling_percentage == 0:
                     downsized_collections = data["x_pre_train"][
                         target_task_train_indeces
                     ]
@@ -159,7 +163,7 @@ def compute_statistics(
                         data["x_pre_train"][unlabelled_data_indeces],
                         unlabelled_data_indeces,
                         stratify=collections[unlabelled_data_indeces],
-                        test_size=1 - args.unlabelled_data_resampling_percentage,
+                        test_size=1 - unlabelled_data_resampling_percentage,
                         random_state=args.seed,
                     )
                     downsized_collections = np.array(
@@ -186,11 +190,17 @@ def compute_statistics(
                 args.dataset,
                 f"stats_split_mode_{args.split_mode}_ssl",
             )
-            if args.exclude_anomalies:
+            if getattr(args, "exclude_anomalies", False):
                 cache = cache + "_anomaly_detection"
-            if args.e4selflearning:
-                cache = cache + "_e4selflearning"
-            if args.reuse_stats and cache in stats_dict:
+            if getattr(args, "e4selflearning", False):
+                cache_e4 = cache + "_e4selflearning"
+                if getattr(args, "reuse_stats", True) and (
+                    cache_e4 in stats_dict or cache in stats_dict
+                ):
+                    cache = cache_e4 if cache_e4 in stats_dict else cache
+                else:
+                    cache = cache_e4
+            if getattr(args, "reuse_stats", True) and cache in stats_dict:
                 pass
             else:
                 stats = {
@@ -217,16 +227,20 @@ def compute_statistics(
                 with open(stats_filename, "wb") as file:
                     pickle.dump(stats_dict, file)
     elif args.task_mode in (1, 2):
-        if args.filter_collections:
-            selected_collections = "_".join(args.filter_collections)
+        filter_collections = getattr(args, "filter_collections", None)
+        unlabelled_data_resampling_percentage = getattr(
+            args, "unlabelled_data_resampling_percentage", 1.0
+        )
+        if filter_collections:
+            selected_collections = "_".join(filter_collections)
             cache = os.path.join(
                 args.dataset,
                 f"stats_{selected_collections}_split_mode_{args.split_mode}_ssl",
             )
-        elif args.unlabelled_data_resampling_percentage < 1:
+        elif unlabelled_data_resampling_percentage < 1:
             cache = os.path.join(
                 args.dataset,
-                f"stats_size_{args.unlabelled_data_resampling_percentage}_split_mode"
+                f"stats_size_{unlabelled_data_resampling_percentage}_split_mode"
                 f"_{args.split_mode}_ssl",
             )
         else:
@@ -234,9 +248,9 @@ def compute_statistics(
                 args.dataset,
                 f"stats_split_mode_{args.split_mode}_ssl",
             )
-            if args.exclude_anomalies:
+            if getattr(args, "exclude_anomalies", False):
                 cache = cache + "_anomaly_detection"
-            if args.reuse_stats and cache in stats_dict:
+            if getattr(args, "reuse_stats", True) and cache in stats_dict:
                 pass
         if not cache in stats_dict:
             raise NotImplementedError(
@@ -245,7 +259,7 @@ def compute_statistics(
             )
     else:
         cache = os.path.join(args.dataset, f"stats_split_mode_{args.split_mode}_sl")
-        if args.reuse_stats and cache in stats_dict:
+        if getattr(args, "reuse_stats", True) and cache in stats_dict:
             pass
         else:
             if args.verbose:
@@ -283,54 +297,69 @@ def compute_statistics(
 def split_into_sets(
     args, y: t.Dict, sleep_status: np.ndarray, recording_id: np.ndarray
 ):
-    if args.e4selflearning:
+    e4selflearning = getattr(args, "e4selflearning", False)
+    if e4selflearning and np.all(y["Sub_ID"] == 0.0):
+        # If Sub_ID is missing, fallback to recording_id to distinguish subjects
+        # We take the first part (e.g., 'SubA' from 'SubA_STRESS') to avoid leakage
+        y["Sub_ID"] = np.array([str(rid).split('_')[0] for rid in recording_id])
+
+    if e4selflearning and args.task_mode == 0:
         # pre-pretraining is conducted on segments marked as wake,
         # i.e. sleep_status == 1
         return {
             "pre_train": np.where(sleep_status == 0)[0],
         }
-    # 0: non-cases (euthymia), 1: cases (acute mood episode)
-    cases_stati = [
-        v for k, v in DICT_STATE.items() if k in ["MDE_BD", "MDE_MDD", "ME", "MX"]
-    ]
-    cases_mask = (
-        (sleep_status == 0)
-        & pd.Series(y["status"]).isin(cases_stati)
-        & (y["time"] == 0)
-        & ((y["YMRS_SUM"] > 7) | (y["HDRS_SUM"] > 7))
-    )
-    controls_stati = [v for k, v in DICT_STATE.items() if k in ["Eu_BD", "Eu_MDD"]]
-    controls_mask = (
-        (sleep_status == 0)
-        & pd.Series(y["status"]).isin(controls_stati)
-        & ((y["YMRS_SUM"] <= 7) & (y["HDRS_SUM"] <= 7))
-    )
+
+    if e4selflearning:
+        # Generic split for custom datasets (e.g. Indian dataset)
+        # We assume status=0 is control/baseline and status!=0 is case/stress
+        mask = (sleep_status == 0)
+        controls_mask = np.array(mask & (y["status"] == 0.0), dtype=bool)
+        cases_mask = np.array(mask & (y["status"] != 0.0), dtype=bool)
+    else:
+        # 0: non-cases (euthymia), 1: cases (acute mood episode)
+        cases_stati = [
+            v for k, v in DICT_STATE.items() if k in ["MDE_BD", "MDE_MDD", "ME", "MX"]
+        ]
+        cases_mask = (
+            (sleep_status == 0)
+            & pd.Series(y["status"]).isin(cases_stati)
+            & (y["time"] == 0)
+            & ((y["YMRS_SUM"] > 7) | (y["HDRS_SUM"] > 7))
+        )
+        controls_stati = [v for k, v in DICT_STATE.items() if k in ["Eu_BD", "Eu_MDD"]]
+        controls_mask = (
+            (sleep_status == 0)
+            & pd.Series(y["status"]).isin(controls_stati)
+            & ((y["YMRS_SUM"] <= 7) & (y["HDRS_SUM"] <= 7))
+        )
 
     # sessions having less than n segments are dropped
-    def _filter_short_sessions(mask, y):
-        sub_ids, segment_counts = np.unique(y["Sub_ID"][mask], return_counts=True)
-        too_short = np.where(segment_counts < 15)[0]
-        if len(too_short):
-            for i in too_short:
-                mask[y["Sub_ID"] == sub_ids[i]] = False
+    if not e4selflearning:
+        def _filter_short_sessions(mask, y):
+            sub_ids, segment_counts = np.unique(y["Sub_ID"][mask], return_counts=True)
+            too_short = np.where(segment_counts < 15)[0]
+            if len(too_short):
+                for i in too_short:
+                    mask[y["Sub_ID"] == sub_ids[i]] = False
 
-    _filter_short_sessions(mask=cases_mask, y=y)
-    _filter_short_sessions(mask=controls_mask, y=y)
+        _filter_short_sessions(mask=cases_mask, y=y)
+        _filter_short_sessions(mask=controls_mask, y=y)
 
-    # Do no allow the same subject to appear across different stati,
-    # we force cases and controls to form two disjoint groups in terms of Sub_ID
-    cross_status_ids = set(np.unique(y["Sub_ID"][controls_mask])).intersection(
-        set(np.unique(y["Sub_ID"][cases_mask]))
-    )
-    if len(cross_status_ids):
-        if len(np.unique(y["Sub_ID"][cases_mask])) > len(
-            np.unique(y["Sub_ID"][controls_mask])
-        ):
-            for sub_id in cross_status_ids:
-                cases_mask[np.where(y["Sub_ID"] == sub_id)[0]] = False
-        else:
-            for sub_id in cross_status_ids:
-                controls_mask[np.where(y["Sub_ID"] == sub_id)[0]] = False
+        # Do no allow the same subject to appear across different stati,
+        # we force cases and controls to form two disjoint groups in terms of Sub_ID
+        cross_status_ids = set(np.unique(y["Sub_ID"][controls_mask])).intersection(
+            set(np.unique(y["Sub_ID"][cases_mask]))
+        )
+        if len(cross_status_ids):
+            if len(np.unique(y["Sub_ID"][cases_mask])) > len(
+                np.unique(y["Sub_ID"][controls_mask])
+            ):
+                for sub_id in cross_status_ids:
+                    cases_mask[np.where(y["Sub_ID"] == sub_id)[0]] = False
+            else:
+                for sub_id in cross_status_ids:
+                    controls_mask[np.where(y["Sub_ID"] == sub_id)[0]] = False
     assert (
         len(
             set(np.unique(y["Sub_ID"][controls_mask])).intersection(
@@ -339,46 +368,47 @@ def split_into_sets(
         )
         == 0
     )
-    # select an equal number of cases and controls, if the number is not
-    # originally equal then remove as many ids as needed starting from those
-    # with fewer segments first
-    cases_ids, cases_counts = np.unique(y["Sub_ID"][cases_mask], return_counts=True)
-    controls_ids, controls_counts = np.unique(
-        y["Sub_ID"][controls_mask], return_counts=True
-    )
-    class_counts_cases = dict(zip(cases_ids, cases_counts))
-    class_counts_controls = dict(zip(controls_ids, controls_counts))
-    if len(class_counts_cases) > len(class_counts_controls):
-        num_ids_to_remove = len(class_counts_cases) - len(class_counts_controls)
-        sorted_classes = sorted(class_counts_cases, key=class_counts_cases.get)
-        cases_mask[
-            pd.Series(y["Sub_ID"]).isin(sorted_classes[:num_ids_to_remove])
-        ] = False
-    elif len(class_counts_controls) > len(class_counts_cases):
-        num_ids_to_remove = len(class_counts_controls) - len(class_counts_cases)
-        sorted_classes = sorted(class_counts_controls, key=class_counts_controls.get)
-        controls_mask[
-            pd.Series(y["Sub_ID"]).isin(sorted_classes[:num_ids_to_remove])
-        ] = False
+    if not e4selflearning:
+        # select an equal number of cases and controls, if the number is not
+        # originally equal then remove as many ids as needed starting from those
+        # with fewer segments first
+        cases_ids, cases_counts = np.unique(y["Sub_ID"][cases_mask], return_counts=True)
+        controls_ids, controls_counts = np.unique(
+            y["Sub_ID"][controls_mask], return_counts=True
+        )
+        class_counts_cases = dict(zip(cases_ids, cases_counts))
+        class_counts_controls = dict(zip(controls_ids, controls_counts))
+        if len(class_counts_cases) > len(class_counts_controls):
+            num_ids_to_remove = len(class_counts_cases) - len(class_counts_controls)
+            sorted_classes = sorted(class_counts_cases, key=class_counts_cases.get)
+            cases_mask[
+                pd.Series(y["Sub_ID"]).isin(sorted_classes[:num_ids_to_remove])
+            ] = False
+        elif len(class_counts_controls) > len(class_counts_cases):
+            num_ids_to_remove = len(class_counts_controls) - len(class_counts_cases)
+            sorted_classes = sorted(class_counts_controls, key=class_counts_controls.get)
+            controls_mask[
+                pd.Series(y["Sub_ID"]).isin(sorted_classes[:num_ids_to_remove])
+            ] = False
 
-    # Find case-control pairs minimizing the element-wise difference
-    # between cases and controls segment number arrays. For each such pair
-    # retain the number of segments of the smallest pair element.
-    cases_ids, cases_counts = np.unique(y["Sub_ID"][cases_mask], return_counts=True)
-    controls_ids, controls_counts = np.unique(
-        y["Sub_ID"][controls_mask], return_counts=True
-    )
-    diff_matrix = np.abs(np.subtract.outer(cases_counts, controls_counts))
-    row_indices, col_indices = linear_sum_assignment(diff_matrix)
-    for (k_case, v_case), (k_control, v_control) in zip(
-        dict(zip(cases_ids[row_indices], cases_counts[row_indices])).items(),
-        dict(zip(controls_ids[col_indices], controls_counts[col_indices])).items(),
-    ):
-        num_segments_to_retain = np.minimum(v_case, v_control)
-        idx_case = np.where((cases_mask == True) & (y["Sub_ID"] == k_case))[0]
-        idx_control = np.where((controls_mask == True) & (y["Sub_ID"] == k_control))[0]
-        cases_mask[idx_case[num_segments_to_retain:]] = False
-        controls_mask[idx_control[num_segments_to_retain:]] = False
+        # Find case-control pairs minimizing the element-wise difference
+        # between cases and controls segment number arrays. For each such pair
+        # retain the number of segments of the smallest pair element.
+        cases_ids, cases_counts = np.unique(y["Sub_ID"][cases_mask], return_counts=True)
+        controls_ids, controls_counts = np.unique(
+            y["Sub_ID"][controls_mask], return_counts=True
+        )
+        diff_matrix = np.abs(np.subtract.outer(cases_counts, controls_counts))
+        row_indices, col_indices = linear_sum_assignment(diff_matrix)
+        for (k_case, v_case), (k_control, v_control) in zip(
+            dict(zip(cases_ids[row_indices], cases_counts[row_indices])).items(),
+            dict(zip(controls_ids[col_indices], controls_counts[col_indices])).items(),
+        ):
+            num_segments_to_retain = np.minimum(v_case, v_control)
+            idx_case = np.where((cases_mask == True) & (y["Sub_ID"] == k_case))[0]
+            idx_control = np.where((controls_mask == True) & (y["Sub_ID"] == k_control))[0]
+            cases_mask[idx_case[num_segments_to_retain:]] = False
+            controls_mask[idx_control[num_segments_to_retain:]] = False
 
     match args.split_mode:
         case 0:
@@ -528,13 +558,15 @@ def split_into_sets(
 
     if args.task_mode in (0, 1, 2, 3, 4):
         if args.task_mode == 0:
-            if args.pretext_task == "masked_prediction" and args.exclude_anomalies:
+            if args.pretext_task == "masked_prediction" and getattr(
+                args, "exclude_anomalies", False
+            ):
                 pretrain_mask[pd.Series(y["status"]).isin(cases_stati)] = 2
         return {
             "pre_train": np.where(pretrain_mask != 2)[0],
-            "train": np.array(idx_dict_cases["train"] + idx_dict_controls["train"]),
-            "val": np.array(idx_dict_cases["val"] + idx_dict_controls["val"]),
-            "test": np.array(idx_dict_cases["test"] + idx_dict_controls["test"]),
+            "train": np.array(idx_dict_cases["train"] + idx_dict_controls["train"], dtype=np.int64),
+            "val": np.array(idx_dict_cases["val"] + idx_dict_controls["val"], dtype=np.int64),
+            "test": np.array(idx_dict_cases["test"] + idx_dict_controls["test"], dtype=np.int64),
         }
     else:
         idx = {
@@ -598,7 +630,7 @@ def construct_dataset(args, data: t.Dict):
         }
         data["pre_train_recording_id"] = data["recording_id"][idx["pre_train"]]
 
-        if not args.e4selflearning:
+        if "train" in idx:
             data["x_train"] = data["sessions_paths"][idx["train"]]
             data["y_train"] = {
                 k: v[idx["train"]] for k, v in data["sessions_labels"].items()
@@ -743,7 +775,7 @@ def get_pre_training_dataset(
                 ),
                 **dataloader_kwargs,
             )
-            if args.e4selflearning:
+            if getattr(args, "e4selflearning", False):
                 pretext_test_ds = None
             else:
                 pretext_test_ds = DataLoader(
@@ -778,7 +810,7 @@ def get_pre_training_dataset(
                 ),
                 **dataloader_kwargs,
             )
-            if args.e4selflearning:
+            if getattr(args, "e4selflearning", False):
                 pretext_test_ds = None
             else:
                 pretext_test_ds = DataLoader(
@@ -841,7 +873,7 @@ def get_pre_training_dataset(
                 ),
                 **dataloader_kwargs,
             )
-            if args.e4selflearning:
+            if getattr(args, "e4selflearning", False):
                 pretext_test_ds = None
             else:
                 pretext_test_ds = DataLoader(
@@ -884,7 +916,10 @@ def get_training_datasets(
         dataloader_kwargs.update(gpu_kwargs)
     args.ds_info["stats"] = compute_statistics(args, data=data)
     if args.task_mode in (1, 2):
-        if args.unlabelled_data_resampling_percentage < 1 or args.filter_collections:
+        if (
+            getattr(args, "unlabelled_data_resampling_percentage", 1.0) < 1
+            or getattr(args, "filter_collections", None)
+        ):
             del args.ds_info["stats"]["pre_train_indeces"]
     train_ds = DataLoader(
         ClassificationDataset(
@@ -1106,7 +1141,7 @@ def get_datasets(args, summary: tensorboard.Summary = None):
     if (
         (summary is not None)
         and (args.plot_mode in (1, 3))
-        and (not args.e4selflearning)
+        and (not getattr(args, "e4selflearning", False))
     ):
         plots.plot_data_summary(args, data=data, summary=summary)
     match args.task_mode:
@@ -1120,8 +1155,8 @@ def get_datasets(args, summary: tensorboard.Summary = None):
             )
             if (
                 (args.plot_mode in (1, 3))
-                and (not args.filter_collections)
-                and (not args.e4selflearning)
+                and (not getattr(args, "filter_collections", None))
+                and (not getattr(args, "e4selflearning", False))
             ):
                 utils.compute_datasets_relative_size(
                     args,

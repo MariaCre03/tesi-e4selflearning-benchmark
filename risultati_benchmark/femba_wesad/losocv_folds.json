@@ -1,0 +1,152 @@
+[
+  {
+    "fold": 1,
+    "subject": "S2",
+    "samples": 22,
+    "accuracy": 86.36,
+    "f1_stress": 72.73,
+    "macro_f1": 81.82,
+    "precision": 66.67,
+    "recall": 80.0
+  },
+  {
+    "fold": 2,
+    "subject": "S3",
+    "samples": 24,
+    "accuracy": 70.83,
+    "f1_stress": 36.36,
+    "macro_f1": 58.72,
+    "precision": 33.33,
+    "recall": 40.0
+  },
+  {
+    "fold": 3,
+    "subject": "S4",
+    "samples": 24,
+    "accuracy": 95.83,
+    "f1_stress": 85.71,
+    "macro_f1": 91.64,
+    "precision": 100.0,
+    "recall": 75.0
+  },
+  {
+    "fold": 4,
+    "subject": "S5",
+    "samples": 23,
+    "accuracy": 82.61,
+    "f1_stress": 33.33,
+    "macro_f1": 61.67,
+    "precision": 50.0,
+    "recall": 25.0
+  },
+  {
+    "fold": 5,
+    "subject": "S6",
+    "samples": 26,
+    "accuracy": 84.62,
+    "f1_stress": 50.0,
+    "macro_f1": 70.45,
+    "precision": 66.67,
+    "recall": 40.0
+  },
+  {
+    "fold": 6,
+    "subject": "S7",
+    "samples": 19,
+    "accuracy": 78.95,
+    "f1_stress": 60.0,
+    "macro_f1": 72.86,
+    "precision": 50.0,
+    "recall": 75.0
+  },
+  {
+    "fold": 7,
+    "subject": "S8",
+    "samples": 20,
+    "accuracy": 65.0,
+    "f1_stress": 22.22,
+    "macro_f1": 49.82,
+    "precision": 25.0,
+    "recall": 20.0
+  },
+  {
+    "fold": 8,
+    "subject": "S9",
+    "samples": 19,
+    "accuracy": 94.74,
+    "f1_stress": 85.71,
+    "macro_f1": 91.24,
+    "precision": 100.0,
+    "recall": 75.0
+  },
+  {
+    "fold": 9,
+    "subject": "S10",
+    "samples": 20,
+    "accuracy": 90.0,
+    "f1_stress": 75.0,
+    "macro_f1": 84.38,
+    "precision": 100.0,
+    "recall": 60.0
+  },
+  {
+    "fold": 10,
+    "subject": "S11",
+    "samples": 19,
+    "accuracy": 78.95,
+    "f1_stress": 50.0,
+    "macro_f1": 68.33,
+    "precision": 66.67,
+    "recall": 40.0
+  },
+  {
+    "fold": 11,
+    "subject": "S13",
+    "samples": 20,
+    "accuracy": 90.0,
+    "f1_stress": 80.0,
+    "macro_f1": 86.67,
+    "precision": 80.0,
+    "recall": 80.0
+  },
+  {
+    "fold": 12,
+    "subject": "S14",
+    "samples": 20,
+    "accuracy": 70.0,
+    "f1_stress": 0.0,
+    "macro_f1": 41.18,
+    "precision": 0.0,
+    "recall": 0.0
+  },
+  {
+    "fold": 13,
+    "subject": "S15",
+    "samples": 19,
+    "accuracy": 78.95,
+    "f1_stress": 33.33,
+    "macro_f1": 60.42,
+    "precision": 50.0,
+    "recall": 25.0
+  },
+  {
+    "fold": 14,
+    "subject": "S16",
+    "samples": 20,
+    "accuracy": 90.0,
+    "f1_stress": 75.0,
+    "macro_f1": 84.38,
+    "precision": 100.0,
+    "recall": 60.0
+  },
+  {
+    "fold": 15,
+    "subject": "S17",
+    "samples": 22,
+    "accuracy": 81.82,
+    "f1_stress": 33.33,
+    "macro_f1": 61.4,
+    "precision": 100.0,
+    "recall": 20.0
+  }
+]

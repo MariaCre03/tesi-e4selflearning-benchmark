@@ -24,19 +24,23 @@ def set_unique_recording_id(args, metadata: t.Dict[str, t.Any]):
 
     np.unique(recording_id) < np.unique(session_id)
     """
+    out_dir_norm = args.output_dir.replace("\\", "/")
+    rec_ids = []
+    for path in metadata["sessions_paths"]:
+        path_norm = str(path).replace("\\", "/")
+        m = re.search(rf"{re.escape(out_dir_norm)}/(.*?)/\d+\.h5", path_norm)
+        if m:
+            rec_ids.append(m.group(1))
+        else:
+            rel = os.path.relpath(os.path.dirname(str(path)), args.output_dir)
+            rec_ids.append(rel.replace("\\", "/"))
     rec_ids = np.array(
         [
-            re.search(rf"{args.output_dir}/(.*?)/\d+\.h5", path).group(1)
-            for path in metadata["sessions_paths"]
-        ]
-    )
-    rec_ids = np.array(
-        [
-            rec_id.rsplit("/", 1)[0]
+            rec_id.replace("\\", "/").rsplit("/", 1)[0]
             if ("barcelona" not in rec_id)
             and ("in-gauge_en-gage" not in rec_id)
-            and (len(rec_id.rsplit("/")) > 2)
-            else rec_id
+            and (len(rec_id.replace("\\", "/").rsplit("/")) > 2)
+            else rec_id.replace("\\", "/")
             for rec_id in rec_ids
         ]
     )

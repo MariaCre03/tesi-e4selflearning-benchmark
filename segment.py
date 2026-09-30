@@ -270,7 +270,7 @@ def process_recording(args, metadata: t.Dict, session_id: str):
         # resample mask so that each mask entry maps to a wall-time second
         mask = np.reshape(
             mask,
-            newshape=(
+            (
                 -1,
                 metadata["sessions_info"][session_id]["sampling_rates"]["SLEEP"],
             ),
@@ -374,6 +374,20 @@ def main(args):
         metadata["ds_info"]["step_size"] = args.step_size
     metadata["ds_info"]["invalid_sessions_upon_segmentation"] = []
 
+    # Validate that all session directories exist
+    missing_sessions = []
+    for session_id in metadata["sessions_info"].keys():
+        recording_path = os.path.join(args.data_dir, session_id, "channels.h5")
+        if not os.path.exists(recording_path):
+            missing_sessions.append(session_id)
+    
+    if missing_sessions:
+        print(f"ERRORE: {len(missing_sessions)} sessioni mancano in {args.data_dir}!")
+        for s in missing_sessions[:10]: # Print first 10
+            print(f"  Mancante: {os.path.join(args.data_dir, s, 'channels.h5')}")
+        if len(missing_sessions) > 10: print(f"  ... e altre {len(missing_sessions)-10}")
+        raise FileNotFoundError(f"Missing {len(missing_sessions)} session files in {args.data_dir}")
+
     results = concurrent.process_map(
         partial(segmentation_wrapper, args, metadata),
         metadata["sessions_info"].keys(),
@@ -455,15 +469,12 @@ if __name__ == "__main__":
         default=2**9,
         help="segmentation window length in seconds",
     )
-    temp_args = parser.parse_known_args()[0]
-    if temp_args.segmentation_mode == 1:
-        parser.add_argument(
-            "--step_size",
-            type=int,
-            default=2**6,
-            help="segmentation window length in seconds",
-        )
-    del temp_args
+    parser.add_argument(
+        "--step_size",
+        type=int,
+        default=2**6,
+        help="segmentation window length in seconds",
+    )
     parser.add_argument(
         "--flirt",
         action="store_true",

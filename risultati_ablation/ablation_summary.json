@@ -1,0 +1,192 @@
+[
+  {
+    "tipo": "BASELINE",
+    "configurazione": "ALL (Tutti gli 11 Dataset)",
+    "escluso": "Nessuno (Completo)",
+    "wesad_acc": 80.59,
+    "wesad_f1_stress": 54.94,
+    "wesad_macro_f1": 71.11,
+    "hosseini_acc": 53.5,
+    "hosseini_f1_stress": 61.44,
+    "hosseini_macro_f1": 50.73
+  },
+  {
+    "tipo": "QvD",
+    "configurazione": "Fixed Budget (Single-Source)",
+    "escluso": "Nessuno (solo BigIdeas)",
+    "wesad_acc": 76.46,
+    "wesad_f1_stress": 51.64,
+    "wesad_macro_f1": 67.89,
+    "hosseini_acc": 50.15,
+    "hosseini_f1_stress": 55.0,
+    "hosseini_macro_f1": 47.48
+  },
+  {
+    "tipo": "QvD",
+    "configurazione": "Fixed Budget (Multi-Source Diverse)",
+    "escluso": "Nessuno (10 dataset)",
+    "wesad_acc": 77.49,
+    "wesad_f1_stress": 52.05,
+    "wesad_macro_f1": 68.1,
+    "hosseini_acc": 50.54,
+    "hosseini_f1_stress": 57.78,
+    "hosseini_macro_f1": 47.97
+  },
+  {
+    "tipo": "LODO",
+    "configurazione": "ALL - adarp",
+    "escluso": "adarp",
+    "wesad_acc": 79.63,
+    "wesad_f1_stress": 59.12,
+    "wesad_macro_f1": 72.68,
+    "hosseini_acc": 51.37,
+    "hosseini_f1_stress": 57.04,
+    "hosseini_macro_f1": 47.82
+  },
+  {
+    "tipo": "LODO",
+    "configurazione": "ALL - dati_preelaborati",
+    "escluso": "dati_preelaborati",
+    "wesad_acc": 79.47,
+    "wesad_f1_stress": 53.67,
+    "wesad_macro_f1": 70.16,
+    "hosseini_acc": 52.55,
+    "hosseini_f1_stress": 59.14,
+    "hosseini_macro_f1": 50.37
+  },
+  {
+    "tipo": "LODO",
+    "configurazione": "ALL - in-gauge_en-gage",
+    "escluso": "in-gauge_en-gage",
+    "wesad_acc": 76.56,
+    "wesad_f1_stress": 52.27,
+    "wesad_macro_f1": 68.21,
+    "hosseini_acc": 50.98,
+    "hosseini_f1_stress": 56.9,
+    "hosseini_macro_f1": 48.67
+  },
+  {
+    "tipo": "LODO",
+    "configurazione": "ALL - pgg_dalia",
+    "escluso": "pgg_dalia",
+    "wesad_acc": 79.31,
+    "wesad_f1_stress": 52.37,
+    "wesad_macro_f1": 69.43,
+    "hosseini_acc": 54.58,
+    "hosseini_f1_stress": 61.07,
+    "hosseini_macro_f1": 51.85
+  },
+  {
+    "tipo": "LODO",
+    "configurazione": "ALL - spd",
+    "escluso": "spd",
+    "wesad_acc": 77.01,
+    "wesad_f1_stress": 51.41,
+    "wesad_macro_f1": 68.08,
+    "hosseini_acc": 51.42,
+    "hosseini_f1_stress": 59.18,
+    "hosseini_macro_f1": 48.21
+  },
+  {
+    "tipo": "LODO",
+    "configurazione": "ALL - stress_detection_nurses_hospital",
+    "escluso": "stress_detection_nurses_hospital",
+    "wesad_acc": 78.5,
+    "wesad_f1_stress": 54.78,
+    "wesad_macro_f1": 70.12,
+    "hosseini_acc": 54.02,
+    "hosseini_f1_stress": 59.92,
+    "hosseini_macro_f1": 52.02
+  },
+  {
+    "tipo": "LODO",
+    "configurazione": "ALL - toadstool",
+    "escluso": "toadstool",
+    "wesad_acc": 82.89,
+    "wesad_f1_stress": 59.18,
+    "wesad_macro_f1": 73.99,
+    "hosseini_acc": 49.09,
+    "hosseini_f1_stress": 54.51,
+    "hosseini_macro_f1": 47.14
+  },
+  {
+    "tipo": "LODO",
+    "configurazione": "ALL - ue4w",
+    "escluso": "ue4w",
+    "wesad_acc": 79.81,
+    "wesad_f1_stress": 54.77,
+    "wesad_macro_f1": 70.8,
+    "hosseini_acc": 50.32,
+    "hosseini_f1_stress": 56.23,
+    "hosseini_macro_f1": 47.92
+  },
+  {
+    "tipo": "LODO",
+    "configurazione": "ALL - weee",
+    "escluso": "weee",
+    "wesad_acc": 76.41,
+    "wesad_f1_stress": 52.24,
+    "wesad_macro_f1": 68.0,
+    "hosseini_acc": 52.65,
+    "hosseini_f1_stress": 59.67,
+    "hosseini_macro_f1": 49.79
+  },
+  {
+    "tipo": "LODO",
+    "configurazione": "ALL - wesad",
+    "escluso": "wesad",
+    "wesad_acc": 76.77,
+    "wesad_f1_stress": 46.31,
+    "wesad_macro_f1": 65.63,
+    "hosseini_acc": 52.82,
+    "hosseini_f1_stress": 60.25,
+    "hosseini_macro_f1": 49.68
+  },
+  {
+    "tipo": "LODO",
+    "configurazione": "ALL - wesd",
+    "escluso": "wesd",
+    "wesad_acc": 75.12,
+    "wesad_f1_stress": 39.44,
+    "wesad_macro_f1": 61.73,
+    "hosseini_acc": 54.56,
+    "hosseini_f1_stress": 61.64,
+    "hosseini_macro_f1": 51.5
+  },
+  {
+    "modello": "femba",
+    "tipo": "BASELINE",
+    "configurazione": "FEMBA - ALL (Tutti gli 11 Dataset)",
+    "escluso": "Nessuno (Completo)",
+    "wesad_acc": 82.58,
+    "wesad_f1_stress": 52.85,
+    "wesad_macro_f1": 71.0,
+    "hosseini_acc": 55.93,
+    "hosseini_f1_stress": 65.34,
+    "hosseini_macro_f1": 51.76
+  },
+  {
+    "modello": "femba",
+    "tipo": "QvD",
+    "configurazione": "FEMBA - Fixed Budget (Single-Source)",
+    "escluso": "Nessuno (solo BigIdeas)",
+    "wesad_acc": 85.54,
+    "wesad_f1_stress": 59.49,
+    "wesad_macro_f1": 75.31,
+    "hosseini_acc": 54.56,
+    "hosseini_f1_stress": 62.74,
+    "hosseini_macro_f1": 51.14
+  },
+  {
+    "modello": "femba",
+    "tipo": "QvD",
+    "configurazione": "FEMBA - Fixed Budget (Multi-Source Diverse)",
+    "escluso": "Nessuno (10 dataset)",
+    "wesad_acc": 83.7,
+    "wesad_f1_stress": 54.29,
+    "wesad_macro_f1": 72.14,
+    "hosseini_acc": 55.07,
+    "hosseini_f1_stress": 64.75,
+    "hosseini_macro_f1": 49.93
+  }
+]

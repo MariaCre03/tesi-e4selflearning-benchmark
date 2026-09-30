@@ -221,8 +221,7 @@ YOUNG_HAMILTON_DICT = {
 
 UNLABELLED_DATA_PATHS = {
     "adarp": "ADARP/Data",
-    "big-ideas": "big-ideas/big-ideas-lab-glycemic-variability-and-wearable"
-    "-device-data-1.1.1",
+    "big-ideas": "big-ideas/big-ideas-lab-glycemic-variability-and-/big-ideas-lab-glycemic-variability-ar",
     "in-gauge_en-gage": "in-gauge_en-gage/in-gauge-and-en-gage-understanding-occupants-behaviour-engagement-emotion-and-comfort-indoors-with-heterogeneous-sensors-and-wearables-1.0.0/raw_wearable_data",
     "k_emocon": "K_EmoCon/e4_data",
     "pgg_dalia": "PPG_DaLiA/PPG_FieldStudy",
@@ -242,7 +241,11 @@ CORRUPTED_FILES = [
     "data/raw_data/unlabelled_data/stress_detection_nurses_hospital/Stress_dataset/BG/BG_1607218219",
 ]
 
-COLLECTIONS_DICT = {
+class CollectionsDict(dict):
+    def __getitem__(self, key):
+        return super().__getitem__(key) if key in self else 0
+
+COLLECTIONS_DICT = CollectionsDict({
     "barcelona": 0,
     "adarp": 1,
     "big-ideas": 2,
@@ -256,7 +259,8 @@ COLLECTIONS_DICT = {
     "weee": 10,
     "wesad": 11,
     "wesd": 12,
-}
+    "dati_preelaborati": 13,
+})
 
 COLLECTIONS_COLOR_DICT = {
     "barcelona": "forestgreen",
@@ -272,6 +276,7 @@ COLLECTIONS_COLOR_DICT = {
     "weee": "chocolate",
     "wesad": "fuchsia",
     "wesd": "lawngreen",
+    "dati_preelaborati": "steelblue",
 }
 
 FLIRT_EDA = [

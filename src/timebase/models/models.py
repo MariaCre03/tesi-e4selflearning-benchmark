@@ -32,7 +32,7 @@ def get_model_info(
         verbose=0,
     )
     if filename is not None:
-        with open(filename, "w") as file:
+        with open(filename, "w", encoding="utf-8") as file:
             file.write(str(model_info))
     if summary is not None:
         summary.scalar(tag, model_info.trainable_params)

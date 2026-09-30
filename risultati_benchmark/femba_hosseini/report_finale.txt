@@ -1,0 +1,19 @@
+======================================================================
+       REPORT FINALE LOSOCV: FEMBA_HOSSEINI_LOSOCV
+======================================================================
+ Modello: FEMBA | Dataset: HOSSEINI (12 Soggetti)
+ Pretrained Weights: femba_encoder_pretrained.pt
+----------------------------------------------------------------------
+ Accuratezza Media (Fold) :  55.93% +- 10.99%
+ F1-Stress Medio (Fold)   :  65.34% +- 10.26%
+ Macro-F1 Medio (Fold)    :  51.76% +- 10.80%
+ Richiamo Medio (Fold)    :  69.44% +- 14.57%
+ Precisione Media (Fold)  :  62.28% +-  7.93%
+----------------------------------------------------------------------
+ POOLED (Globale su tutti i 1003 campioni):
+  Acc: 56.03% | F1-Stress: 65.84% | Macro-F1: 52.08%
+----------------------------------------------------------------------
+ MATRICE DI CONFUSIONE POOLED:
+[[137 254]
+ [187 425]]
+======================================================================

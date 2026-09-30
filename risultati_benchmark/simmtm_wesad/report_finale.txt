@@ -1,0 +1,19 @@
+======================================================================
+       REPORT FINALE LOSOCV: SIMMTM_WESAD_LOSOCV
+======================================================================
+ Modello: SIMMTM | Dataset: WESAD (15 Soggetti)
+ Pretrained Weights: simmtm_encoder_pretrained.pt
+----------------------------------------------------------------------
+ Accuratezza Media (Fold) :  80.59% +-  9.00%
+ F1-Stress Medio (Fold)   :  54.94% +- 23.72%
+ Macro-F1 Medio (Fold)    :  71.11% +- 14.22%
+ Richiamo Medio (Fold)    :  60.00% +- 31.14%
+ Precisione Media (Fold)  :  58.83% +- 24.59%
+----------------------------------------------------------------------
+ POOLED (Globale su tutti i 317 campioni):
+  Acc: 80.44% | F1-Stress: 56.94% | Macro-F1: 72.15%
+----------------------------------------------------------------------
+ MATRICE DI CONFUSIONE POOLED:
+[[214  33]
+ [ 29  41]]
+======================================================================

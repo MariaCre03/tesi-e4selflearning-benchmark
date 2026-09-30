@@ -145,3 +145,61 @@ dmypy.json
 runs
 wandb/
 .run/
+
+# Deep Learning weights and checkpoints
+*.pt
+*.pth
+*.ckpt
+*.bin
+*.onnx
+
+# Raw and preprocessed dataset folders (contain GBs of biosignals)
+data/
+downstream_data/
+physionet_segmented/
+output_pretrain_full/
+checkpoints/
+output/
+confronti/
+
+# Personal thesis drafts, slides, and literature
+documenti/
+vecchi_notebook_e_doc/
+
+# Logs and secrets (Strict protection: no passwords, no keys, no server tokens)
+*.log
+*.pem
+*.key
+*.pub
+id_rsa*
+id_ed25519*
+*id_rsa*
+*id_ed25519*
+.env*
+*credential*
+*secret*
+*password*
+*passwd*
+known_hosts*
+config
+
+
+# Whitelist benchmark and ablation outputs (reports, CSV and JSON metrics only)
+!risultati_benchmark/
+!risultati_benchmark/**/
+!risultati_benchmark/**/*.json
+!risultati_benchmark/**/*.txt
+!risultati_benchmark/**/*.csv
+!risultati_ablation/
+!risultati_ablation/*.json
+!risultati_ablation/*.txt
+!*.md
+
+# Explicitly block any weights or checkpoints inside results
+risultati_ablation/checkpoints/
+risultati_benchmark/**/checkpoints/
+*.pt
+*.pth
+*.ckpt
+
+

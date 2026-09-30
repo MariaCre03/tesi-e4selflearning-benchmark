@@ -81,6 +81,11 @@ def load_channel(recording_dir: str, channel: str):
         unix_t0 = raw_data[0] if raw_data.ndim == 1 else raw_data[0, 0]
         sampling_rate = raw_data[1] if raw_data.ndim == 1 else raw_data[1, 0]
         data = raw_data[2:]
+    
+    # NEW: Robust numeric casting for datasets with mixed-type CSVs (like Toadstool)
+    unix_t0 = float(unix_t0)
+    sampling_rate = float(sampling_rate)
+    
     assert sampling_rate.is_integer(), "sampling rate must be an integer"
     data = np.squeeze(data)
     return int(unix_t0), int(sampling_rate), data.astype(np.float32)
@@ -128,7 +133,7 @@ def sleep_wake_detection(args, t0: int, session_info: t.Dict, channel_data: t.Di
     # derived from EDA in order to align it to ACC
     upsampled_no_wear_mask = np.reshape(
         channel_data["WEAR"],
-        newshape=(-1, session_info["sampling_rates"]["WEAR"]),
+        (-1, session_info["sampling_rates"]["WEAR"]),
         order="C",
     )
     upsampled_no_wear_mask = np.repeat(
@@ -137,7 +142,7 @@ def sleep_wake_detection(args, t0: int, session_info: t.Dict, channel_data: t.Di
         // session_info["sampling_rates"]["WEAR"],
         axis=1,
     )
-    upsampled_no_wear_mask = np.reshape(upsampled_no_wear_mask, newshape=-1, order="C")
+    upsampled_no_wear_mask = np.reshape(upsampled_no_wear_mask, -1, order="C")
     indexes = get_sequences_boundaries_index(arr=upsampled_no_wear_mask, value=1)
 
     match args.sleep_algorithm:
@@ -449,14 +454,18 @@ def recast_collection(args, collection: str, path: str):
                 check_faulty_folder(dirpath=dirpath, files2dismiss=files2dismiss)
                 if os.path.join(dirpath, filename) in files2dismiss:
                     continue
+                dirpath_clean = dirpath.replace("\\", "/")
+                path_clean = path.replace("\\", "/")
+                rel_dir = dirpath_clean.rsplit(f"{path_clean}/", 1)[-1] if f"{path_clean}/" in dirpath_clean else os.path.relpath(dirpath, root_dir)
                 output_file = os.path.join(
                     output_dir_collection,
-                    dirpath.rsplit(f"{path}/", 1)[-1],
+                    rel_dir,
                     f"{get_channel_from_filename(filename, CSV_CHANNELS)}.csv",
                 ).replace(" ", "_")
-                if not os.path.exists(output_file.rsplit("/", 1)[0]):
-                    os.makedirs(output_file.rsplit("/", 1)[0])
-                    dirs.append(output_file.rsplit("/", 1)[0])
+                out_parent = os.path.dirname(output_file)
+                if not os.path.exists(out_parent):
+                    os.makedirs(out_parent, exist_ok=True)
+                    dirs.append(out_parent)
                 if collection in REFORMAT_COLLECTION_DICT.keys():
                     REFORMAT_COLLECTION_DICT[collection](
                         filename=os.path.join(dirpath, filename),

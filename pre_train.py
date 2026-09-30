@@ -53,7 +53,7 @@ def positive_real(value):
 
 def load(d: t.Dict[str, torch.Tensor], device: torch.device):
     """Load values in dictionary d to device"""
-    return {k: v.to(device) for k, v in d.items()}
+    return {k: v.float().to(device) for k, v in d.items()}
 
 
 @torch.inference_mode()

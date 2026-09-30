@@ -1,0 +1,98 @@
+[
+  {
+    "fold": 1,
+    "subject": "G",
+    "samples": 85,
+    "accuracy": 49.41,
+    "f1_stress": 27.12,
+    "macro_f1": 44.19
+  },
+  {
+    "fold": 2,
+    "subject": "H",
+    "samples": 85,
+    "accuracy": 51.76,
+    "f1_stress": 67.72,
+    "macro_f1": 36.18
+  },
+  {
+    "fold": 3,
+    "subject": "I",
+    "samples": 85,
+    "accuracy": 50.59,
+    "f1_stress": 67.19,
+    "macro_f1": 33.59
+  },
+  {
+    "fold": 4,
+    "subject": "J",
+    "samples": 85,
+    "accuracy": 25.88,
+    "f1_stress": 20.25,
+    "macro_f1": 25.51
+  },
+  {
+    "fold": 5,
+    "subject": "K",
+    "samples": 85,
+    "accuracy": 43.53,
+    "f1_stress": 60.0,
+    "macro_f1": 32.0
+  },
+  {
+    "fold": 6,
+    "subject": "L",
+    "samples": 85,
+    "accuracy": 60.0,
+    "f1_stress": 75.0,
+    "macro_f1": 37.5
+  },
+  {
+    "fold": 7,
+    "subject": "M",
+    "samples": 85,
+    "accuracy": 54.12,
+    "f1_stress": 70.23,
+    "macro_f1": 35.11
+  },
+  {
+    "fold": 8,
+    "subject": "O",
+    "samples": 85,
+    "accuracy": 43.53,
+    "f1_stress": 46.67,
+    "macro_f1": 43.33
+  },
+  {
+    "fold": 9,
+    "subject": "P",
+    "samples": 85,
+    "accuracy": 34.12,
+    "f1_stress": 26.32,
+    "macro_f1": 33.37
+  },
+  {
+    "fold": 10,
+    "subject": "Q",
+    "samples": 85,
+    "accuracy": 61.18,
+    "f1_stress": 69.16,
+    "macro_f1": 58.39
+  },
+  {
+    "fold": 11,
+    "subject": "S",
+    "samples": 85,
+    "accuracy": 56.47,
+    "f1_stress": 62.63,
+    "macro_f1": 55.26
+  },
+  {
+    "fold": 12,
+    "subject": "T",
+    "samples": 68,
+    "accuracy": 73.53,
+    "f1_stress": 84.75,
+    "macro_f1": 42.37
+  }
+]

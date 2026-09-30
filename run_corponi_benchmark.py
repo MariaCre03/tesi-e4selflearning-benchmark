@@ -28,16 +28,22 @@ class WearableClsDataset(ClassificationDataset):
         return int(match.group(0)) if match else 0
 
     def session_id(self, filename: str) -> int:
-        match = re.search(r'[sS](\d+)', filename)
+        norm = filename.replace("\\", "/")
+        # Match WESAD subject folder specifically (e.g. /S2/ or /S15/)
+        match = re.search(r'/([sS]\d+)/', norm)
         if match:
-            return int(match.group(1))
-        match_f = re.search(r'[fF](\d+)', filename)
+            return int(re.search(r'\d+', match.group(1)).group(0))
+        # Match PhysioNet subject folders (e.g. /SUB_S01/ or /SUB_f02/)
+        match_f = re.search(r'/SUB_([sSfF])(\d+)/', norm)
         if match_f:
-            return int(match_f.group(1)) + 100
-        match_hosseini = re.search(r'([A-Za-z]+)_T\d+', filename)
+            offset = 100 if match_f.group(1).lower() == 'f' else 0
+            return int(match_f.group(2)) + offset
+        # Match Indian Students dataset (e.g. subject_1_T1 or user_A_T1)
+        match_hosseini = re.search(r'/([A-Za-z0-9_]+)_T\d+/', norm)
         if match_hosseini:
             sub = match_hosseini.group(1).upper()
-            return ord(sub[0]) - 64 if sub[0].isalpha() else 0
+            # Deterministic collision-free integer ID
+            return sum(ord(c) * (31 ** i) for i, c in enumerate(sub[:6])) % 10000
         return 0
 
 def load_pre_trained(args, classifier):

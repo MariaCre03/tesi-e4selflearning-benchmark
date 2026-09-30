@@ -312,10 +312,26 @@ def evaluate_downstream_losocv(model_type, dataset_name, data_dir, ckpt_path, ep
     lbl_k = next((k for k in ["status", "label", "binary_stress", "stress"] if k in lbls), list(lbls.keys())[0])
     raw_y = np.array(lbls[lbl_k], dtype=np.float32)
     uniq = set(np.unique(raw_y))
-    all_labels = raw_y if uniq.issubset({0.0, 1.0}) else np.array([1.0 if y in [1.0, 2.0] else 0.0 for y in raw_y], dtype=np.float32)
+    
+    # Standard Binary Classification Mapping:
+    # 0.0 = Non-Stress (Baseline/Neutral), 1.0 = Stress
+    if uniq.issubset({0.0, 1.0}):
+        all_labels = raw_y
+    else:
+        # Standard WESAD multi-class protocol (Schmidt et al., 2018):
+        # 2.0 = Stress (Positive = 1.0), 1.0 = Baseline (Negative = 0.0)
+        all_labels = np.array([1.0 if float(y) == 2.0 else 0.0 for y in raw_y], dtype=np.float32)
 
     if "wesad" in dataset_name.lower():
-        all_subs = np.array([re.search(r'[sS]\d+', p).group(0).upper() if re.search(r'[sS]\d+', p) else "S0" for p in all_paths])
+        # Estrai il subject ID direttamente dal nome della cartella genitore (es. 'S2')
+        def extract_wesad_sub(p):
+            parent = os.path.basename(os.path.dirname(p.replace("\\", "/")))
+            m = re.match(r'^[sS]\d+$', parent)
+            if m: return parent.upper()
+            m2 = re.search(r'[\\/]([sS]\d+)[\\/]', p.replace("\\", "/"))
+            return m2.group(1).upper() if m2 else parent.upper()
+
+        all_subs = np.array([extract_wesad_sub(p) for p in all_paths])
         unique_subs = sorted(list(np.unique(all_subs)), key=lambda x: int(re.search(r'\d+', x).group(0)) if re.search(r'\d+', x) else 0)
     else:
         all_subs = np.array([p.replace("\\", "/").split("/")[-2].split("_")[0] for p in all_paths])

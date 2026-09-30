@@ -23,13 +23,9 @@ def load_model_folds(ds, model):
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
     
-    # Ordina per subject/fold per garantire allineamento paired
-    data_sorted = sorted(data, key=lambda x: str(x.get("subject", x.get("fold"))))
-    accs = [f["accuracy"] for f in data_sorted]
-    f1_stresses = [f["f1_stress"] for f in data_sorted]
-    macro_f1s = [f["macro_f1"] for f in data_sorted]
-    subs = [str(f.get("subject", f.get("fold"))) for f in data_sorted]
-    return {"acc": np.array(accs), "f1": np.array(f1_stresses), "macro_f1": np.array(macro_f1s), "subs": subs}
+    # Mappa per subject per garantire allineamento paired esatto
+    sub_map = {str(f.get("subject", f.get("fold"))): f for f in data}
+    return sub_map
 
 def compute_ci(data, confidence=0.95):
     n = len(data)
@@ -37,6 +33,19 @@ def compute_ci(data, confidence=0.95):
     std_err = stats.sem(data)
     h = std_err * stats.t.ppf((1 + confidence) / 2., n - 1)
     return m, h
+
+def holm_bonferroni(p_values, alpha=0.05):
+    """Correzione sequenziale di Holm-Bonferroni per confronti multipli."""
+    sorted_indices = np.argsort(p_values)
+    m = len(p_values)
+    adjusted_sig = [False] * m
+    for rank, idx in enumerate(sorted_indices):
+        threshold = alpha / (m - rank)
+        if p_values[idx] <= threshold:
+            adjusted_sig[idx] = True
+        else:
+            break
+    return adjusted_sig
 
 def run_stats():
     print("\n" + "="*95)
@@ -58,21 +67,28 @@ def run_stats():
             print(" Nessun dato trovato per questo dataset.")
             continue
 
+        # Trova soggetti comuni a tutti i modelli disponibili
+        common_subs = sorted(list(set.intersection(*[set(results[m].keys()) for m in results])))
+        print(f" [INFO] Soggetti comuni allineati per LOSOCV: {len(common_subs)} ({', '.join(common_subs[:5])}...)")
+
         # Tabella Medie +- CI 95%
         print("\n--- 1. METRICHE CON INTERVALLO DI CONFIDENZA AL 95% ---")
         print(f"{'Modello':<15} | {'Accuratezza (95% CI)':<25} | {'F1-Stress (95% CI)':<25} | {'Macro-F1 (95% CI)'}")
         print("-" * 90)
         for m in MODELS:
             if m in results:
-                m_acc, h_acc = compute_ci(results[m]["acc"])
-                m_f1, h_f1 = compute_ci(results[m]["f1"])
-                m_mf1, h_mf1 = compute_ci(results[m]["macro_f1"])
+                accs = [results[m][s]["accuracy"] for s in common_subs]
+                f1s = [results[m][s]["f1_stress"] for s in common_subs]
+                mf1s = [results[m][s]["macro_f1"] for s in common_subs]
+                m_acc, h_acc = compute_ci(accs)
+                m_f1, h_f1 = compute_ci(f1s)
+                m_mf1, h_mf1 = compute_ci(mf1s)
                 print(f"{m.upper():<15} | {m_acc:5.2f}% ± {h_acc:4.2f}%          | {m_f1:5.2f}% ± {h_f1:4.2f}%          | {m_mf1:5.2f}% ± {h_mf1:4.2f}%")
 
-        # Test di Significatività: Wilcoxon Signed-Rank Test & Paired t-test
-        print("\n--- 2. TEST DI SIGNIFICATIVITÀ STATISTICA (PAIRED P-VALUES) ---")
-        print(f"{'Confronto (A vs B)':<25} | {'Metrica':<12} | {'Wilcoxon p-val':<16} | {'t-test p-val':<14} | {'Significativo?'}")
-        print("-" * 85)
+        # Test di Significatività: Wilcoxon Signed-Rank Test con correzione Holm-Bonferroni
+        print("\n--- 2. TEST DI SIGNIFICATIVITÀ STATISTICA (PAIRED WILCOXON & HOLM-BONFERRONI) ---")
+        print(f"{'Confronto (A vs B)':<25} | {'Metrica':<12} | {'Wilcoxon p-val':<16} | {'t-test p-val':<14} | {'Significativo (Holm)'}")
+        print("-" * 92)
 
         pairs = [
             ("femba", "corponi"),
@@ -83,12 +99,15 @@ def run_stats():
             ("simmtm", "biot"),
         ]
 
-        for m1, m2 in pairs:
-            if m1 in results and m2 in results:
-                # Confronto su accuratezza e Macro-F1
-                for metric_key, metric_name in [("acc", "Accuracy"), ("macro_f1", "Macro-F1"), ("f1", "F1-Stress")]:
-                    v1 = results[m1][metric_key]
-                    v2 = results[m2][metric_key]
+        for metric_key, metric_name in [("accuracy", "Accuracy"), ("macro_f1", "Macro-F1"), ("f1_stress", "F1-Stress")]:
+            active_pairs = []
+            wilc_pvals = []
+            ttest_pvals = []
+
+            for m1, m2 in pairs:
+                if m1 in results and m2 in results:
+                    v1 = np.array([results[m1][s][metric_key] for s in common_subs])
+                    v2 = np.array([results[m2][s][metric_key] for s in common_subs])
                     diff = v1 - v2
                     if np.all(diff == 0):
                         continue
@@ -96,19 +115,28 @@ def run_stats():
                         _, p_wilc = stats.wilcoxon(v1, v2)
                     except Exception:
                         p_wilc = 1.0
-                    _, p_ttest = stats.ttest_rel(v1, v2)
-                    sig = "SI (p < 0.05) *" if p_wilc < 0.05 or p_ttest < 0.05 else "NO (p >= 0.05)"
-                    if p_wilc < 0.01 or p_ttest < 0.01:
-                        sig = "SI (p < 0.01) **"
-                    
-                    pair_label = f"{m1.upper()} vs {m2.upper()}"
-                    print(f"{pair_label:<25} | {metric_name:<12} | {p_wilc:<16.4f} | {p_ttest:<14.4f} | {sig}")
-                print("-" * 85)
+                    try:
+                        _, p_ttest = stats.ttest_rel(v1, v2)
+                    except Exception:
+                        p_ttest = 1.0
+
+                    active_pairs.append((m1, m2))
+                    wilc_pvals.append(p_wilc)
+                    ttest_pvals.append(p_ttest)
+
+            # Correzione di Holm-Bonferroni sui confronti del dataset
+            sig_flags = holm_bonferroni(wilc_pvals, alpha=0.05) if wilc_pvals else []
+
+            for (m1, m2), p_w, p_t, is_sig in zip(active_pairs, wilc_pvals, ttest_pvals, sig_flags):
+                pair_label = f"{m1.upper()} vs {m2.upper()}"
+                sig_str = "SI (p_corr < 0.05) *" if is_sig else "NO"
+                print(f"{pair_label:<25} | {metric_name:<12} | {p_w:<16.4f} | {p_t:<14.4f} | {sig_str}")
+            print("-" * 92)
 
     print("\n" + "="*95)
     print(" NOTE METODOLOGICHE PER IL PAPER:")
-    print("  * Wilcoxon signed-rank test e Paired t-test sono stati calcolati sui fold appaiati (soggetto per soggetto).")
-    print("  * Risultati con p < 0.05 sono contrassegnati con *, con p < 0.01 con **.")
+    print("  * Tutti i test appaiati garantiscono che il soggetto i-esimo del Modello A corrisponda esattamente al soggetto i-esimo del Modello B.")
+    print("  * I p-value di Wilcoxon sono corretti per confronti multipli tramite la procedura sequenziale di Holm-Bonferroni (alfa = 0.05).")
     print("="*95 + "\n")
 
 if __name__ == "__main__":

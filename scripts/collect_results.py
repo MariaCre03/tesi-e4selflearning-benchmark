@@ -13,11 +13,9 @@ def print_header(title):
 def scan_datasets():
     print_header("1. STATO DATASET PREPROCESSATI SUL SERVER")
     candidate_meta = [
-        r"data\preprocessed\unsegmented_unlabelled\metadata.pkl",
-        r"data\preprocessed\sl512_ss256_unlabelled\metadata.pkl",
-        r"..\data\preprocessed\unsegmented_unlabelled\metadata.pkl",
-        r"C:\Users\Admin\data\preprocessed\unsegmented_unlabelled\metadata.pkl",
-        r"C:\Users\Admin\tesi_maria_aggiustata\data\preprocessed\unsegmented_unlabelled\metadata.pkl"
+        os.path.join("data", "preprocessed", "unsegmented_unlabelled", "metadata.pkl"),
+        os.path.join("data", "preprocessed", "sl512_ss256_unlabelled", "metadata.pkl"),
+        os.path.join("..", "data", "preprocessed", "unsegmented_unlabelled", "metadata.pkl"),
     ]
     meta_path = None
     for p in candidate_meta:

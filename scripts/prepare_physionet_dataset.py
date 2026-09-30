@@ -11,7 +11,7 @@ import pickle
 from tqdm import tqdm
 
 ZIP_URL = "https://physionet.org/static/published-projects/wearable-device-dataset/wearable-device-dataset-from-induced-stress-and-structured-exercise-sessions-1.0.1.zip"
-LOCAL_DOWNLOADS = r"C:\Users\maria\Downloads\wearable-device-dataset-from-induced-stress-and-structured-exercise-sessions-1.0.1.zip"
+LOCAL_DOWNLOADS = os.path.expanduser("~/Downloads/wearable-device-dataset-from-induced-stress-and-structured-exercise-sessions-1.0.1.zip")
 SERVER_ZIP = "wearable-device-dataset-from-induced-stress-and-structured-exercise-sessions-1.0.1.zip"
 
 OUTPUT_DIR = "downstream_data/physionet_segmented"

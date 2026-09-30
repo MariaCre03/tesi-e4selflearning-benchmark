@@ -165,6 +165,7 @@ confronti/
 # Personal thesis drafts, slides, and literature
 documenti/
 vecchi_notebook_e_doc/
+scripts/setup_preprocessing/
 
 # Logs and secrets (Strict protection: no passwords, no keys, no server tokens)
 *.log

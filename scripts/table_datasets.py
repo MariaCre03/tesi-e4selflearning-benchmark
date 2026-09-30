@@ -191,10 +191,9 @@ def analyze_dataset_corpus(meta_path):
 
 def main():
     candidate_paths = [
-        r"C:\Users\Admin\data\preprocessed\sl512_ss256_unlabelled\metadata.pkl",
-        r"C:\Users\Admin\data\preprocessed\unsegmented_unlabelled\metadata.pkl",
-        r"data\preprocessed\sl512_ss256_unlabelled\metadata.pkl",
-        r"..\data\preprocessed\sl512_ss256_unlabelled\metadata.pkl"
+        os.path.join("data", "preprocessed", "sl512_ss256_unlabelled", "metadata.pkl"),
+        os.path.join("data", "preprocessed", "unsegmented_unlabelled", "metadata.pkl"),
+        os.path.join("..", "data", "preprocessed", "sl512_ss256_unlabelled", "metadata.pkl"),
     ]
 
     meta_file = find_metadata_path(candidate_paths)

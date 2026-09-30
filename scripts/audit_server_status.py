@@ -11,8 +11,8 @@ def print_box(title):
     print("=" * 80)
 
 def main():
-    print_box("AUDIT COMPLETO SERVER - VERIFICA REQUISITI PAPER JOURNAL")
-    print("Questo script verifica lo stato di avanzamento degli 8 punti richiesti dalla professoressa.")
+    print_box("AUDIT COMPLETO - VERIFICA REQUISITI SCIENTIFICI JOURNAL")
+    print("Questo script verifica lo stato di avanzamento degli 8 requisiti sperimentali per la pubblicazione scientifica.")
     
     status_summary = {}
 
@@ -248,8 +248,8 @@ def main():
     # -------------------------------------------------------------
     # QUADRO SINOTTICO FINALE
     # -------------------------------------------------------------
-    print_box("TABELLA DI SINTESI FINALE: STATO DEGLI 8 REQUISITI DELLA PROF")
-    print(f"{'Requisito Professore':<45} | {'Stato Rilevato'}")
+    print_box("TABELLA DI SINTESI FINALE: STATO DEGLI 8 REQUISITI DEL BENCHMARK")
+    print(f"{'Requisito Scientifico':<45} | {'Stato Rilevato'}")
     print("-" * 75)
     for k, v in status_summary.items():
         print(f"{k:<45} | {v}")

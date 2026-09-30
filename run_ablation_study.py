@@ -383,14 +383,18 @@ def evaluate_downstream_losocv(model_type, dataset_name, data_dir, ckpt_path, ep
 # 6. GESTIONE ABLATION: LODO E QUANTITY VS DIVERSITY
 # =====================================================================
 KNOWN_DATASETS = [
-    "adarp", "dati_preelaborati", "in-gauge_en-gage", "pgg_dalia", "spd",
-    "stress_detection_nurses_hospital", "toadstool", "ue4w", "weee", "wesad", "wesd"
+    "adarp", "big-ideas", "dati_preelaborati", "in-gauge_en-gage",
+    "ppg_dalia", "pgg_dalia", "spd", "stress_detection_nurses_hospital",
+    "toadstool", "ue4w", "weee", "wesad", "wesd"
 ]
 
 def map_path_to_dataset(p):
     norm = p.replace("\\", "/").lower()
     for k in sorted(KNOWN_DATASETS, key=lambda x: -len(x)):
         if k in norm:
+            # Normalizza chiavi note
+            if k in ["ppg_dalia", "pgg_dalia"]: return "ppg_dalia"
+            if k in ["big-ideas", "dati_preelaborati"]: return "big-ideas"
             return k
     return "unknown"
 
@@ -491,10 +495,12 @@ def run_ablation(args):
 
         # Valutazione downstream
         print(f"\n>>> Valutazione Downstream LOSOCV...")
-        res_s_wesad = evaluate_downstream_losocv(args.model, "wesad", r"downstream_data\wesad_segmented", ckpt_single)
-        res_s_hoss = evaluate_downstream_losocv(args.model, "hosseini", r"downstream_data\hosseini_segmented", ckpt_single)
-        res_m_wesad = evaluate_downstream_losocv(args.model, "wesad", r"downstream_data\wesad_segmented", ckpt_multi)
-        res_m_hoss = evaluate_downstream_losocv(args.model, "hosseini", r"downstream_data\hosseini_segmented", ckpt_multi)
+        wesad_dir = os.path.join("downstream_data", "wesad_segmented")
+        hoss_dir = os.path.join("downstream_data", "hosseini_segmented")
+        res_s_wesad = evaluate_downstream_losocv(args.model, "wesad", wesad_dir, ckpt_single)
+        res_s_hoss = evaluate_downstream_losocv(args.model, "hosseini", hoss_dir, ckpt_single)
+        res_m_wesad = evaluate_downstream_losocv(args.model, "wesad", wesad_dir, ckpt_multi)
+        res_m_hoss = evaluate_downstream_losocv(args.model, "hosseini", hoss_dir, ckpt_multi)
 
         cfg_s = f"{label_prefix}Fixed Budget (Single-Source)"
         cfg_m = f"{label_prefix}Fixed Budget (Multi-Source Diverse)"
@@ -545,8 +551,10 @@ def run_ablation(args):
             else:
                 print(f" [SKIP] Checkpoint esistente: {ckpt_path}")
 
-            res_wesad = evaluate_downstream_losocv(args.model, "wesad", r"downstream_data\wesad_segmented", ckpt_path, epochs=20)
-            res_hosseini = evaluate_downstream_losocv(args.model, "hosseini", r"downstream_data\hosseini_segmented", ckpt_path, epochs=20)
+            wesad_dir = os.path.join("downstream_data", "wesad_segmented")
+            hoss_dir = os.path.join("downstream_data", "hosseini_segmented")
+            res_wesad = evaluate_downstream_losocv(args.model, "wesad", wesad_dir, ckpt_path, epochs=20)
+            res_hosseini = evaluate_downstream_losocv(args.model, "hosseini", hoss_dir, ckpt_path, epochs=20)
 
             summary_results = [r for r in summary_results if r.get("configurazione") != cfg_name]
             summary_results.append({

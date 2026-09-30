@@ -166,6 +166,17 @@ confronti/
 documenti/
 vecchi_notebook_e_doc/
 scripts/setup_preprocessing/
+versione_pulita/
+notebook_indiani/
+notebook_wesad/
+nuovi_confronti/
+ablation_study/
+nuovo_notebook_*.ipynb
+run_experiments_with_logs.py
+run_live_benchmark.py
+run_remaining_benchmarks.py
+mostra_risultati.py
+test_loop.py
 
 # Logs and secrets (Strict protection: no passwords, no keys, no server tokens)
 *.log

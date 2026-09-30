@@ -55,6 +55,52 @@ class SimMTMClassifier(nn.Module):
         return self.head(enc)
 
 # =====================================================================
+# 1b. ARCHITETTURA BIOT (Biosignal Transformer)
+# =====================================================================
+class SinusoidalPE(nn.Module):
+    def __init__(self, d_model, max_len=5000):
+        super().__init__()
+        pe = torch.zeros(max_len, d_model)
+        pos = torch.arange(0, max_len).unsqueeze(1).float()
+        div = torch.exp(torch.arange(0, d_model, 2).float() * (-np.log(10000.0) / d_model))
+        pe[:, 0::2] = torch.sin(pos * div)
+        pe[:, 1::2] = torch.cos(pos * div)
+        self.register_buffer('pe', pe.unsqueeze(0))
+    def forward(self, x): return x + self.pe[:, :x.size(1)]
+
+class BIOTEncoder(nn.Module):
+    def __init__(self, n_channels=6, seg_len=640, chunk_size=64, d_model=256, n_heads=8, n_layers=4, dropout=0.1):
+        super().__init__()
+        self.n_channels, self.chunk_size, self.d_model = n_channels, chunk_size, d_model
+        self.n_chunks = seg_len // chunk_size
+        self.patch_embed = nn.Linear(chunk_size, d_model)
+        self.channel_emb = nn.Embedding(n_channels, d_model)
+        self.pos_enc = SinusoidalPE(d_model, max_len=self.n_chunks * n_channels + 1)
+        self.cls_token = nn.Parameter(torch.randn(1, 1, d_model))
+        layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=n_heads, dim_feedforward=d_model*4, dropout=dropout, batch_first=True)
+        self.transformer = nn.TransformerEncoder(layer, num_layers=n_layers)
+        self.norm = nn.LayerNorm(d_model)
+
+    def forward(self, x):
+        B, C, T = x.shape
+        x = x[:, :, :self.n_chunks * self.chunk_size].contiguous().view(B, C, self.n_chunks, self.chunk_size)
+        x = self.patch_embed(x) + self.channel_emb(torch.arange(C, device=x.device)).unsqueeze(0).unsqueeze(2)
+        x = x.view(B, C * self.n_chunks, self.d_model)
+        cls = self.cls_token.expand(B, -1, -1)
+        x = torch.cat([cls, x], dim=1)
+        return self.norm(self.transformer(self.pos_enc(x)))[:, 0, :]
+
+class BIOTClassifier(nn.Module):
+    def __init__(self, encoder, n_classes=1, dropout=0.5):
+        super().__init__()
+        self.encoder = encoder
+        self.head = nn.Sequential(
+            nn.Dropout(dropout), nn.Linear(encoder.d_model, 128),
+            nn.ReLU(), nn.Dropout(dropout), nn.Linear(128, n_classes)
+        )
+    def forward(self, x): return self.head(self.encoder(x))
+
+# =====================================================================
 # 2. ARCHITETTURA FEMBA (Mamba / State-Space Model)
 # =====================================================================
 class PureMamba(nn.Module):
@@ -296,6 +342,45 @@ def pretrain_femba(file_paths, out_ckpt_path, epochs=10, batch_size=32, lr=0.000
     torch.save({"model": femba.state_dict()}, out_ckpt_path)
     print(f"[OK] Pesi pre-trained FEMBA salvati in: {out_ckpt_path}\n", flush=True)
 
+def pretrain_biot(file_paths, out_ckpt_path, epochs=10, batch_size=32, lr=0.0001, mask_ratio=0.4):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"\n[PRE-TRAINING BIOT Transformer] {len(file_paths):,} finestre | Epoche: {epochs} | Device: {device}", flush=True)
+
+    encoder = BIOTEncoder(seg_len=640, d_model=256, n_heads=8, n_layers=4).to(device)
+    decoder = nn.Linear(encoder.d_model, encoder.chunk_size).to(device)
+    opt = torch.optim.AdamW(list(encoder.parameters()) + list(decoder.parameters()), lr=lr, weight_decay=1e-4)
+    loader = DataLoader(PretrainDataset(file_paths), batch_size=batch_size, shuffle=True, drop_last=True)
+
+    t0 = time.time()
+    for ep in range(1, epochs + 1):
+        encoder.train(); decoder.train()
+        losses = []
+        for xb in loader:
+            xb = xb.to(device)
+            B, C, T = xb.shape
+            x_chunks = xb[:, :, :encoder.n_chunks * encoder.chunk_size].contiguous().view(B, C * encoder.n_chunks, encoder.chunk_size)
+            mask = torch.rand(B, C * encoder.n_chunks, device=device) < mask_ratio
+            if not mask.any(): mask[:, 0] = True
+
+            x_masked = x_chunks.clone()
+            x_masked[mask] = 0.0
+
+            x_ch = x_masked.view(B, C, encoder.n_chunks, encoder.chunk_size)
+            emb = encoder.patch_embed(x_ch) + encoder.channel_emb(torch.arange(C, device=device)).unsqueeze(0).unsqueeze(2)
+            emb = emb.view(B, C * encoder.n_chunks, encoder.d_model)
+            rep = encoder.norm(encoder.transformer(encoder.pos_enc(emb)))
+            recon = decoder(rep)
+
+            loss = F.mse_loss(recon[mask], x_chunks[mask])
+            opt.zero_grad(); loss.backward(); opt.step()
+            losses.append(loss.item())
+
+        print(f"  -> BIOT Epoca {ep:02d}/{epochs:02d} ({time.time()-t0:.1f}s) | MSE Loss: {np.mean(losses):.4f}", flush=True)
+
+    os.makedirs(os.path.dirname(out_ckpt_path), exist_ok=True)
+    torch.save({"model": encoder.state_dict()}, out_ckpt_path)
+    print(f"[OK] Pesi pre-trained BIOT salvati in: {out_ckpt_path}\n", flush=True)
+
 # =====================================================================
 # 5. VALUTAZIONE DOWNSTREAM IN LOSOCV (WESAD & Hosseini)
 # =====================================================================
@@ -361,6 +446,13 @@ def evaluate_downstream_losocv(model_type, dataset_name, data_dir, ckpt_path, ep
                 sd = torch.load(ckpt_path, map_location=device)
                 sd = sd["model"] if "model" in sd else sd
                 model.load_state_dict(sd, strict=False)
+        elif model_type == "biot":
+            encoder = BIOTEncoder(seg_len=640, d_model=256, n_heads=8, n_layers=4)
+            if os.path.exists(ckpt_path):
+                sd = torch.load(ckpt_path, map_location=device)
+                sd = sd["model"] if "model" in sd else sd
+                encoder.load_state_dict({k.replace("encoder.", ""): v for k, v in sd.items()}, strict=False)
+            model = BIOTClassifier(encoder, n_classes=1, dropout=0.3).to(device)
         else:
             model = SimMTMClassifier(SimMTMEncoder()).to(device)
             if os.path.exists(ckpt_path):
@@ -468,6 +560,15 @@ def run_ablation(args):
             "hosseini_acc": 55.93, "hosseini_f1_stress": 65.34, "hosseini_macro_f1": 51.76
         })
 
+    # Inserisci baseline BIOT se assente
+    biot_baseline_name = "BIOT - ALL (Tutti gli 11 Dataset)"
+    if args.model == "biot" and not any(r.get("configurazione") == biot_baseline_name for r in summary_results):
+        summary_results.append({
+            "modello": "biot", "tipo": "BASELINE", "configurazione": biot_baseline_name, "escluso": "Nessuno (Completo)",
+            "wesad_acc": 77.09, "wesad_f1_stress": 52.20, "wesad_macro_f1": 68.00,
+            "hosseini_acc": 48.60, "hosseini_f1_stress": 50.77, "hosseini_macro_f1": 45.54
+        })
+
     def save_summary():
         with open(out_json, "w", encoding="utf-8") as fj:
             json.dump(summary_results, fj, indent=2)
@@ -482,30 +583,37 @@ def run_ablation(args):
         
         target_budget = 8000
         prefix = f"{args.model}_"
-        label_prefix = f"{args.model.upper()} - " if args.model == "femba" else ""
+        label_prefix = f"{args.model.upper()} - " if args.model in ["femba", "biot"] else ""
 
-        # Caso A: Single Source (100% da Big-Ideas/dati_preelaborati)
+        # Caso A: Single Source (100% da Big-Ideas)
         ckpt_single = os.path.join(out_root, "checkpoints", f"{prefix}single_source.pt")
-        single_files = random.sample(dataset_buckets["dati_preelaborati"], min(len(dataset_buckets["dati_preelaborati"]), target_budget))
+        big_ideas_key = "big-ideas" if dataset_buckets.get("big-ideas") else "dati_preelaborati"
+        big_ideas_pool = dataset_buckets.get(big_ideas_key, [])
+        single_files = random.sample(big_ideas_pool, min(len(big_ideas_pool), target_budget))
         if not os.path.exists(ckpt_single):
             print(f"\n>>> CONFIGURAZIONE: {label_prefix}Single-Source (8.000 finestre da 1 solo dataset)")
             if args.model == "femba":
                 pretrain_femba(single_files, ckpt_single, epochs=args.pretrain_epochs, batch_size=32)
+            elif args.model == "biot":
+                pretrain_biot(single_files, ckpt_single, epochs=args.pretrain_epochs, batch_size=32)
             else:
                 pretrain_simmtm(single_files, ckpt_single, epochs=args.pretrain_epochs, batch_size=32)
         else:
             print(f" [SKIP] Checkpoint esistente per Single-Source: {ckpt_single}")
 
-        # Caso B: Multi-Source Diverse (800 finestre da 10 dataset)
+        # Caso B: Multi-Source Diverse (Bilanciato da tutti i dataset attivi)
         ckpt_multi = os.path.join(out_root, "checkpoints", f"{prefix}multi_source.pt")
+        active_buckets = [b for b in dataset_buckets.values() if len(b) > 0]
+        per_ds = target_budget // max(1, len(active_buckets))
         multi_files = []
-        per_ds = target_budget // len(KNOWN_DATASETS)
-        for k, files in dataset_buckets.items():
+        for files in active_buckets:
             multi_files.extend(random.sample(files, min(len(files), per_ds)))
         if not os.path.exists(ckpt_multi):
-            print(f"\n>>> CONFIGURAZIONE: {label_prefix}Multi-Source Diverse (8.000 finestre da 10 dataset)")
+            print(f"\n>>> CONFIGURAZIONE: {label_prefix}Multi-Source Diverse ({len(multi_files):,} finestre da {len(active_buckets)} dataset)")
             if args.model == "femba":
                 pretrain_femba(multi_files, ckpt_multi, epochs=args.pretrain_epochs, batch_size=32)
+            elif args.model == "biot":
+                pretrain_biot(multi_files, ckpt_multi, epochs=args.pretrain_epochs, batch_size=32)
             else:
                 pretrain_simmtm(multi_files, ckpt_multi, epochs=args.pretrain_epochs, batch_size=32)
         else:
@@ -545,7 +653,7 @@ def run_ablation(args):
         print("#"*80)
 
         lodo_targets = [args.target_ds] if args.target_ds != "all" else KNOWN_DATASETS
-        label_prefix = f"{args.model.upper()} - " if args.model == "femba" else ""
+        label_prefix = f"{args.model.upper()} - " if args.model in ["femba", "biot"] else ""
 
         for exclude_ds in lodo_targets:
             exp_name = f"{args.model}_no_{exclude_ds}"
@@ -564,6 +672,8 @@ def run_ablation(args):
                 sampled_files = random.sample(train_files, min(len(train_files), args.max_pretrain_windows))
                 if args.model == "femba":
                     pretrain_femba(sampled_files, ckpt_path, epochs=args.pretrain_epochs, batch_size=32)
+                elif args.model == "biot":
+                    pretrain_biot(sampled_files, ckpt_path, epochs=args.pretrain_epochs, batch_size=32)
                 else:
                     pretrain_simmtm(sampled_files, ckpt_path, epochs=args.pretrain_epochs, batch_size=32)
             else:
@@ -594,7 +704,7 @@ def run_ablation(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Ablation Study Runner")
-    parser.add_argument("--model", type=str, default="simmtm", choices=["simmtm", "femba"], help="Modello da usare (simmtm o femba)")
+    parser.add_argument("--model", type=str, default="simmtm", choices=["simmtm", "femba", "biot"], help="Modello da usare (simmtm, femba, biot)")
     parser.add_argument("--mode", type=str, default="diversity", choices=["all", "lodo", "diversity"])
     parser.add_argument("--target_ds", type=str, default="adarp", help="Dataset da escludere in LODO (oppure 'all')")
     parser.add_argument("--meta_path", type=str, default=r"data\preprocessed\sl512_ss256_unlabelled\metadata.pkl")

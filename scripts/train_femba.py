@@ -25,8 +25,9 @@ class PureMamba(nn.Module):
             groups=self.d_inner, padding=d_conv - 1
         )
         self.x_proj = nn.Linear(self.d_inner, self.dt_rank + 2 * self.d_state, bias=False)
-        self.dt_proj = nn.Linear(self.dt_rank, self.d_inner, bias=True)
-        self.A_log = nn.Parameter(torch.randn(self.d_inner, self.d_state))
+        # Canonical Mamba S4D-Real diagonal decay initialization
+        A = torch.arange(1, self.d_state + 1, dtype=torch.float32).repeat(self.d_inner, 1)
+        self.A_log = nn.Parameter(torch.log(A))
         self.D = nn.Parameter(torch.ones(self.d_inner))
         self.out_proj = nn.Linear(self.d_inner, d_model, bias=False)
 

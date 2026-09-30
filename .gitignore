@@ -177,6 +177,7 @@ run_live_benchmark.py
 run_remaining_benchmarks.py
 mostra_risultati.py
 test_loop.py
+xai/
 
 # Logs and secrets (Strict protection: no passwords, no keys, no server tokens)
 *.log

@@ -384,7 +384,28 @@ def pretrain_biot(file_paths, out_ckpt_path, epochs=10, batch_size=32, lr=0.0001
 # =====================================================================
 # 5. VALUTAZIONE DOWNSTREAM IN LOSOCV (WESAD & Hosseini)
 # =====================================================================
-def evaluate_downstream_losocv(model_type, dataset_name, data_dir, ckpt_path, epochs=20, lr=0.0001, batch_size=16):
+def evaluate_downstream_losocv(model_type, dataset_name, data_dir, ckpt_path, epochs=20, lr=0.0001, batch_size=16, folds_out_path=None):
+    """Valuta in LOSOCV e salva i fold fold-by-fold.
+    Restituisce: {acc, f1_stress, macro_f1, folds: [{subject, accuracy, f1_stress, macro_f1, samples}]}
+    Se folds_out_path e' specificato, salva il JSON dei fold su file.
+    """
+    if folds_out_path and os.path.exists(folds_out_path):
+        try:
+            with open(folds_out_path, "r", encoding="utf-8") as fp:
+                saved_folds = json.load(fp)
+            if len(saved_folds) > 0:
+                print(f"    [SKIP] Fold gia' calcolati e presenti in: {folds_out_path}", flush=True)
+                accs = [f["accuracy"] for f in saved_folds if "accuracy" in f and f["accuracy"] is not None]
+                f1s  = [f["f1_stress"] for f in saved_folds if "f1_stress" in f and f["f1_stress"] is not None]
+                mf1s = [f["macro_f1"] for f in saved_folds if "macro_f1" in f and f["macro_f1"] is not None]
+                if len(accs) > 0:
+                    return {"acc": round(float(np.mean(accs)), 2),
+                            "f1_stress": round(float(np.mean(f1s)), 2),
+                            "macro_f1": round(float(np.mean(mf1s)), 2),
+                            "folds": saved_folds}
+        except Exception:
+            pass
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     with open(os.path.join(data_dir, "metadata.pkl"), "rb") as f: meta = pickle.load(f)
 
@@ -400,35 +421,43 @@ def evaluate_downstream_losocv(model_type, dataset_name, data_dir, ckpt_path, ep
     raw_y = np.array(lbls[lbl_k], dtype=np.float32)
     uniq = set(np.unique(raw_y))
     
-    # Standard Binary Classification Mapping:
-    # 0.0 = Non-Stress (Baseline/Neutral), 1.0 = Stress
     if uniq.issubset({0.0, 1.0}):
         all_labels = raw_y
     else:
-        # Standard WESAD multi-class protocol (Schmidt et al., 2018):
-        # 2.0 = Stress (Positive = 1.0), 1.0 = Baseline (Negative = 0.0)
         all_labels = np.array([1.0 if float(y) == 2.0 else 0.0 for y in raw_y], dtype=np.float32)
 
     if "wesad" in dataset_name.lower():
-        # Estrai il subject ID direttamente dal nome della cartella genitore (es. 'S2')
         def extract_wesad_sub(p):
             parent = os.path.basename(os.path.dirname(p.replace("\\", "/")))
             m = re.match(r'^[sS]\d+$', parent)
             if m: return parent.upper()
             m2 = re.search(r'[\\/]([sS]\d+)[\\/]', p.replace("\\", "/"))
             return m2.group(1).upper() if m2 else parent.upper()
-
         all_subs = np.array([extract_wesad_sub(p) for p in all_paths])
         unique_subs = sorted(list(np.unique(all_subs)), key=lambda x: int(re.search(r'\d+', x).group(0)) if re.search(r'\d+', x) else 0)
+    elif "physionet" in dataset_name.lower():
+        all_subs = np.array([p.replace("\\", "/").split("/")[-2] for p in all_paths])
+        unique_subs = sorted(list(np.unique(all_subs)))
     else:
         all_subs = np.array([p.replace("\\", "/").split("/")[-2].split("_")[0] for p in all_paths])
         unique_subs = sorted(list(np.unique(all_subs)))
 
+    if len(unique_subs) < 2:
+        print(f"    [SKIP] Solo {len(unique_subs)} soggetto/i unico/i in {dataset_name} "
+              f"— impossibile fare LOSOCV. Verifica l'estrazione dei subject ID.")
+        return {"acc": None, "f1_stress": None, "macro_f1": None, "folds": []}
+
     fold_accs, fold_f1s, fold_mf1s = [], [], []
+    fold_records = []  # lista fold-by-fold per statistiche
 
     for idx, test_sub in enumerate(unique_subs, 1):
         tr_m = (all_subs != test_sub)
         te_m = (all_subs == test_sub)
+
+        # Salta fold con training set vuoto (puo' succedere con dataset molto piccoli)
+        if tr_m.sum() == 0 or te_m.sum() == 0:
+            print(f"    [SKIP] Fold {idx} [{test_sub}]: training o test set vuoto, saltato.")
+            continue
 
         ds_tr = WearableDownstreamDataset(all_paths[tr_m], all_labels[tr_m])
         ds_te = WearableDownstreamDataset(all_paths[te_m], all_labels[te_m])
@@ -480,21 +509,38 @@ def evaluate_downstream_losocv(model_type, dataset_name, data_dir, ckpt_path, ep
                 val_y_p.extend((torch.sigmoid(out) >= 0.5).long().cpu().numpy().flatten())
                 val_y_t.extend(yb.numpy().flatten())
 
-        fold_accs.append(accuracy_score(val_y_t, val_y_p) * 100)
-        fold_f1s.append(f1_score(val_y_t, val_y_p, zero_division=0) * 100)
-        fold_mf1s.append(f1_score(val_y_t, val_y_p, average="macro", zero_division=0) * 100)
+        acc_f  = round(accuracy_score(val_y_t, val_y_p) * 100, 2)
+        f1_f   = round(f1_score(val_y_t, val_y_p, zero_division=0) * 100, 2)
+        mf1_f  = round(f1_score(val_y_t, val_y_p, average="macro", zero_division=0) * 100, 2)
+        fold_accs.append(acc_f)
+        fold_f1s.append(f1_f)
+        fold_mf1s.append(mf1_f)
+        fold_records.append({"fold": idx, "subject": str(test_sub),
+                             "samples": int(te_m.sum()),
+                             "accuracy": acc_f, "f1_stress": f1_f, "macro_f1": mf1_f})
+        print(f"    Fold {idx:02d} [{test_sub}] Acc={acc_f:.1f}% F1-Stress={f1_f:.1f}% Macro-F1={mf1_f:.1f}%", flush=True)
 
     mean_acc = round(float(np.mean(fold_accs)), 2)
-    mean_f1 = round(float(np.mean(fold_f1s)), 2)
+    mean_f1  = round(float(np.mean(fold_f1s)), 2)
     mean_mf1 = round(float(np.mean(fold_mf1s)), 2)
-    return {"acc": mean_acc, "f1_stress": mean_f1, "macro_f1": mean_mf1}
+
+    if folds_out_path:
+        os.makedirs(os.path.dirname(folds_out_path), exist_ok=True)
+        with open(folds_out_path, "w", encoding="utf-8") as fp:
+            json.dump(fold_records, fp, indent=2)
+        print(f"    [OK] Fold salvati in: {folds_out_path}", flush=True)
+
+    return {"acc": mean_acc, "f1_stress": mean_f1, "macro_f1": mean_mf1, "folds": fold_records}
 
 # =====================================================================
 # 6. GESTIONE ABLATION: LODO E QUANTITY VS DIVERSITY
 # =====================================================================
+# Nomi canonici = nomi reali delle cartelle nel corpus preprocessato.
+# NON aggiungere alias (es. ppg_dalia/pgg_dalia, big-ideas/dati_preelaborati):
+# gli alias causano bucket vuoti nel LODO e run spurii.
 KNOWN_DATASETS = [
-    "adarp", "big-ideas", "dati_preelaborati", "in-gauge_en-gage",
-    "ppg_dalia", "pgg_dalia", "spd", "stress_detection_nurses_hospital",
+    "adarp", "dati_preelaborati", "in-gauge_en-gage",
+    "pgg_dalia", "spd", "stress_detection_nurses_hospital",
     "toadstool", "ue4w", "weee", "wesad", "wesd"
 ]
 
@@ -502,9 +548,6 @@ def map_path_to_dataset(p):
     norm = p.replace("\\", "/").lower()
     for k in sorted(KNOWN_DATASETS, key=lambda x: -len(x)):
         if k in norm:
-            # Normalizza chiavi note
-            if k in ["ppg_dalia", "pgg_dalia"]: return "ppg_dalia"
-            if k in ["big-ideas", "dati_preelaborati"]: return "big-ideas"
             return k
     return "unknown"
 
@@ -619,28 +662,54 @@ def run_ablation(args):
         else:
             print(f" [SKIP] Checkpoint esistente per Multi-Source: {ckpt_multi}")
 
-        # Valutazione downstream
+        # Valutazione downstream su 3 dataset
         print(f"\n>>> Valutazione Downstream LOSOCV...")
-        wesad_dir = os.path.join("downstream_data", "wesad_segmented")
-        hoss_dir = os.path.join("downstream_data", "hosseini_segmented")
-        res_s_wesad = evaluate_downstream_losocv(args.model, "wesad", wesad_dir, ckpt_single)
-        res_s_hoss = evaluate_downstream_losocv(args.model, "hosseini", hoss_dir, ckpt_single)
-        res_m_wesad = evaluate_downstream_losocv(args.model, "wesad", wesad_dir, ckpt_multi)
-        res_m_hoss = evaluate_downstream_losocv(args.model, "hosseini", hoss_dir, ckpt_multi)
+        wesad_dir    = os.path.join("downstream_data", "wesad_segmented")
+        hoss_dir     = os.path.join("downstream_data", "hosseini_segmented")
+        physio_dir   = os.path.join("downstream_data", "physionet_segmented")
+        folds_dir    = os.path.join(out_root, "folds")
 
         cfg_s = f"{label_prefix}Fixed Budget (Single-Source)"
         cfg_m = f"{label_prefix}Fixed Budget (Multi-Source Diverse)"
 
+        res_s_wesad  = evaluate_downstream_losocv(args.model, "wesad", wesad_dir, ckpt_single,
+            folds_out_path=os.path.join(folds_dir, f"{args.model}_single_wesad.json"))
+        res_s_hoss   = evaluate_downstream_losocv(args.model, "hosseini", hoss_dir, ckpt_single,
+            folds_out_path=os.path.join(folds_dir, f"{args.model}_single_hosseini.json"))
+        res_m_wesad  = evaluate_downstream_losocv(args.model, "wesad", wesad_dir, ckpt_multi,
+            folds_out_path=os.path.join(folds_dir, f"{args.model}_multi_wesad.json"))
+        res_m_hoss   = evaluate_downstream_losocv(args.model, "hosseini", hoss_dir, ckpt_multi,
+            folds_out_path=os.path.join(folds_dir, f"{args.model}_multi_hosseini.json"))
+
+        # PhysioNet (opzionale: salta se la cartella non esiste o la struttura non è compatibile)
+        res_s_physio = res_m_physio = {"acc": None, "f1_stress": None, "macro_f1": None, "folds": []}
+        if os.path.isdir(physio_dir):
+            try:
+                res_s_physio = evaluate_downstream_losocv(args.model, "physionet", physio_dir, ckpt_single,
+                    folds_out_path=os.path.join(folds_dir, f"{args.model}_single_physionet.json"))
+                res_m_physio = evaluate_downstream_losocv(args.model, "physionet", physio_dir, ckpt_multi,
+                    folds_out_path=os.path.join(folds_dir, f"{args.model}_multi_physionet.json"))
+            except Exception as e:
+                print(f"    [WARN] PhysioNet QvD eval fallita: {e}. Saltata.")
+
         summary_results = [r for r in summary_results if r.get("configurazione") not in [cfg_s, cfg_m]]
         summary_results.append({
-            "modello": args.model, "tipo": "QvD", "configurazione": cfg_s, "escluso": "Nessuno (solo BigIdeas)",
+            "modello": args.model, "tipo": "QvD", "configurazione": cfg_s, "escluso": "Nessuno (solo dati_preelaborati)",
             "wesad_acc": res_s_wesad["acc"], "wesad_f1_stress": res_s_wesad["f1_stress"], "wesad_macro_f1": res_s_wesad["macro_f1"],
-            "hosseini_acc": res_s_hoss["acc"], "hosseini_f1_stress": res_s_hoss["f1_stress"], "hosseini_macro_f1": res_s_hoss["macro_f1"]
+            "wesad_folds": res_s_wesad["folds"],
+            "hosseini_acc": res_s_hoss["acc"], "hosseini_f1_stress": res_s_hoss["f1_stress"], "hosseini_macro_f1": res_s_hoss["macro_f1"],
+            "hosseini_folds": res_s_hoss["folds"],
+            "physionet_acc": res_s_physio["acc"], "physionet_f1_stress": res_s_physio["f1_stress"], "physionet_macro_f1": res_s_physio["macro_f1"],
+            "physionet_folds": res_s_physio["folds"],
         })
         summary_results.append({
-            "modello": args.model, "tipo": "QvD", "configurazione": cfg_m, "escluso": "Nessuno (10 dataset)",
+            "modello": args.model, "tipo": "QvD", "configurazione": cfg_m, "escluso": "Nessuno (11 dataset)",
             "wesad_acc": res_m_wesad["acc"], "wesad_f1_stress": res_m_wesad["f1_stress"], "wesad_macro_f1": res_m_wesad["macro_f1"],
-            "hosseini_acc": res_m_hoss["acc"], "hosseini_f1_stress": res_m_hoss["f1_stress"], "hosseini_macro_f1": res_m_hoss["macro_f1"]
+            "wesad_folds": res_m_wesad["folds"],
+            "hosseini_acc": res_m_hoss["acc"], "hosseini_f1_stress": res_m_hoss["f1_stress"], "hosseini_macro_f1": res_m_hoss["macro_f1"],
+            "hosseini_folds": res_m_hoss["folds"],
+            "physionet_acc": res_m_physio["acc"], "physionet_f1_stress": res_m_physio["f1_stress"], "physionet_macro_f1": res_m_physio["macro_f1"],
+            "physionet_folds": res_m_physio["folds"],
         })
         save_summary()
 
@@ -669,6 +738,10 @@ def run_ablation(args):
 
             if not os.path.exists(ckpt_path):
                 random.seed(args.seed)
+                np.random.seed(args.seed)
+                torch.manual_seed(args.seed)
+                if torch.cuda.is_available():
+                    torch.cuda.manual_seed_all(args.seed)
                 sampled_files = random.sample(train_files, min(len(train_files), args.max_pretrain_windows))
                 if args.model == "femba":
                     pretrain_femba(sampled_files, ckpt_path, epochs=args.pretrain_epochs, batch_size=32)
@@ -679,16 +752,35 @@ def run_ablation(args):
             else:
                 print(f" [SKIP] Checkpoint esistente: {ckpt_path}")
 
-            wesad_dir = os.path.join("downstream_data", "wesad_segmented")
-            hoss_dir = os.path.join("downstream_data", "hosseini_segmented")
-            res_wesad = evaluate_downstream_losocv(args.model, "wesad", wesad_dir, ckpt_path, epochs=20)
-            res_hosseini = evaluate_downstream_losocv(args.model, "hosseini", hoss_dir, ckpt_path, epochs=20)
+            wesad_dir  = os.path.join("downstream_data", "wesad_segmented")
+            hoss_dir   = os.path.join("downstream_data", "hosseini_segmented")
+            physio_dir = os.path.join("downstream_data", "physionet_segmented")
+            folds_dir  = os.path.join(out_root, "folds")
+            # Slug sicuro per il nome file (rimuove caratteri speciali)
+            slug = exclude_ds.replace("/", "-").replace(" ", "_")
+
+            res_wesad   = evaluate_downstream_losocv(args.model, "wesad", wesad_dir, ckpt_path, epochs=20,
+                folds_out_path=os.path.join(folds_dir, f"{args.model}_no_{slug}_wesad.json"))
+            res_hosseini = evaluate_downstream_losocv(args.model, "hosseini", hoss_dir, ckpt_path, epochs=20,
+                folds_out_path=os.path.join(folds_dir, f"{args.model}_no_{slug}_hosseini.json"))
+
+            res_physio = {"acc": None, "f1_stress": None, "macro_f1": None, "folds": []}
+            if os.path.isdir(physio_dir):
+                try:
+                    res_physio = evaluate_downstream_losocv(args.model, "physionet", physio_dir, ckpt_path, epochs=20,
+                        folds_out_path=os.path.join(folds_dir, f"{args.model}_no_{slug}_physionet.json"))
+                except Exception as e:
+                    print(f"    [WARN] PhysioNet LODO eval fallita per {exclude_ds}: {e}. Saltata.")
 
             summary_results = [r for r in summary_results if r.get("configurazione") != cfg_name]
             summary_results.append({
                 "modello": args.model, "tipo": "LODO", "configurazione": cfg_name, "escluso": exclude_ds,
                 "wesad_acc": res_wesad["acc"], "wesad_f1_stress": res_wesad["f1_stress"], "wesad_macro_f1": res_wesad["macro_f1"],
-                "hosseini_acc": res_hosseini["acc"], "hosseini_f1_stress": res_hosseini["f1_stress"], "hosseini_macro_f1": res_hosseini["macro_f1"]
+                "wesad_folds": res_wesad["folds"],
+                "hosseini_acc": res_hosseini["acc"], "hosseini_f1_stress": res_hosseini["f1_stress"], "hosseini_macro_f1": res_hosseini["macro_f1"],
+                "hosseini_folds": res_hosseini["folds"],
+                "physionet_acc": res_physio["acc"], "physionet_f1_stress": res_physio["f1_stress"], "physionet_macro_f1": res_physio["macro_f1"],
+                "physionet_folds": res_physio["folds"],
             })
             save_summary()
 
@@ -704,11 +796,27 @@ def run_ablation(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Ablation Study Runner")
-    parser.add_argument("--model", type=str, default="simmtm", choices=["simmtm", "femba", "biot"], help="Modello da usare (simmtm, femba, biot)")
-    parser.add_argument("--mode", type=str, default="diversity", choices=["all", "lodo", "diversity"])
-    parser.add_argument("--target_ds", type=str, default="adarp", help="Dataset da escludere in LODO (oppure 'all')")
+    parser.add_argument("--model", type=str, default="simmtm", choices=["simmtm", "femba", "biot"])
+    parser.add_argument("--mode", type=str, default="diversity",
+                        choices=["all", "lodo", "diversity", "eval_only"],
+                        help="all=tutto; lodo=solo LODO; diversity=solo QvD; "
+                             "eval_only=riesegui solo il fine-tuning LOSOCV su checkpoint esistenti (no pre-training)")
+    parser.add_argument("--target_ds", type=str, default="all",
+                        help="Dataset da escludere in LODO (oppure 'all' per tutti)")
     parser.add_argument("--meta_path", type=str, default=r"data\preprocessed\sl512_ss256_unlabelled\metadata.pkl")
     parser.add_argument("--pretrain_epochs", type=int, default=10)
     parser.add_argument("--max_pretrain_windows", type=int, default=15000)
     parser.add_argument("--seed", type=int, default=42)
-    run_ablation(parser.parse_args())
+    args = parser.parse_args()
+
+    # Modalita' eval_only: riesegue solo il fine-tuning LOSOCV su tutti i checkpoint esistenti
+    # senza toccare il pre-training. Utile per aggiungere fold-by-fold e PhysioNet.
+    if args.mode == "eval_only":
+        args.mode = "all"   # esegue tutto il flusso
+        # Sovrascrive pretrain_* per disabilitare de facto il pre-training:
+        # il codice salterà il pre-training se il .pt esiste già
+        # Quindi basta NON cancellare i checkpoint prima di lanciare.
+        print("[eval_only] Modalità solo-eval: il pre-training viene saltato se il checkpoint esiste.")
+        print("[eval_only] I fold-by-fold e PhysioNet vengono aggiunti a ogni entry aggiornata.")
+
+    run_ablation(args)
